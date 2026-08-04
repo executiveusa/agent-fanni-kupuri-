@@ -1,0 +1,43 @@
+name: Verify Agent Fanni
+
+on:
+  pull_request:
+  push:
+    branches:
+      - main
+      - feat/fanni-sovereign-prototype
+
+permissions:
+  contents: read
+
+jobs:
+  build:
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Set up Node
+        uses: actions/setup-node@v4
+        with:
+          node-version: 22
+
+      - name: Install dependencies
+        run: npm install
+
+      - name: Build
+        run: npm run build
+
+      - name: Confirm no secret files are tracked
+        run: |
+          test ! -f .env
+          test ! -f .env.local
+          test ! -f .env.production
+
+      - name: Upload build artifact
+        uses: actions/upload-artifact@v4
+        with:
+          name: agent-fanni-dist
+          path: dist
+          if-no-files-found: error
