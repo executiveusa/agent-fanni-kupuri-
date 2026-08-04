@@ -1,6 +1,6 @@
-# Agent Fanny — Kupuri Media
+# Agent Fanni — Kupuri Media
 
-Agent Fanny is a local-first, workflow-driven media intelligence and social operations agent.
+Agent Fanni is a local-first, workflow-driven media intelligence and social operations agent.
 
 ## Current prototype scope
 
