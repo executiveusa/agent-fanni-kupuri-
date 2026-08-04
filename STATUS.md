@@ -4,7 +4,7 @@
 Brownfield integration into an initialized but otherwise empty target repository.
 
 ## Built on branch
-`feat/fanny-sovereign-prototype`
+`feat/fanni-sovereign-prototype`
 
 ## Completed
 - React/Vite demonstration control plane
