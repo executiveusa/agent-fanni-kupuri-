@@ -46,7 +46,7 @@ function App() {
   return (
     <main>
       <header className="topbar">
-        <div className="brand"><span className="brand-mark">F</span><div><strong>Agent Fanny</strong><small>Kupuri Media · Sovereign Operations</small></div></div>
+        <div className="brand"><span className="brand-mark">F</span><div><strong>Agent Fanni</strong><small>Kupuri Media · Sovereign Operations</small></div></div>
         <div className="security"><LockKeyhole size={16} /> Local-first demo <span>Cloud writes blocked</span></div>
       </header>
 
@@ -54,13 +54,13 @@ function App() {
         <div className="hero-copy">
           <span className="eyebrow"><Sparkles size={15}/> Private AI operations</span>
           <h1>Turn signals into decisions, content and measurable business value.</h1>
-          <p>Fanny is a charismatic bilingual operator that coordinates evidence-based workflows, speaks with the team, and keeps sensitive work separated by workspace.</p>
+          <p>Fanni is a charismatic bilingual operator that coordinates evidence-based workflows, speaks with the team, and keeps sensitive work separated by workspace.</p>
           <div className="hero-actions">
             <button className="primary" onClick={runDemo} disabled={running || selected.status === 'locked'}><Play size={17}/>{running ? 'Running workflow…' : 'Run selected workflow'}</button>
             <button className={voice ? 'secondary active' : 'secondary'} onClick={() => setVoice(!voice)}><AudioLines size={17}/>{voice ? 'Voice active' : 'Activate voice demo'}</button>
           </div>
         </div>
-        <div className="avatar-card" aria-label="Agent Fanny avatar placeholder">
+        <div className="avatar-card" aria-label="Agent Fanni avatar placeholder">
           <div className="avatar-orbit"></div>
           <div className="avatar"><span>F</span></div>
           <div className="presence"><i></i>{voice ? 'Listening locally' : 'Ready to work'}</div>
