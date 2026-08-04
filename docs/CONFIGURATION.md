@@ -1,12 +1,12 @@
-# Agent Fanny Configuration Wiring
+# Agent Fanni Configuration Wiring
 
 ## Configuration layers
 
-Agent Fanny separates configuration into four classes:
+Agent Fanni separates configuration into four classes:
 
 1. **Public build configuration** — safe browser values prefixed with `VITE_`.
 2. **Server secrets** — available only to the Hostinger runtime or server functions.
-3. **Workspace policy** — stored in the isolated `fanny` Supabase schema.
+3. **Workspace policy** — stored in the isolated `fanni` Supabase schema.
 4. **Local runtime configuration** — QVAC, SpeakFlow, Space Agent, models, and device permissions.
 
 Never expose service-role keys, provider secrets, publishing tokens, or signing secrets through `VITE_*` variables.
@@ -18,8 +18,8 @@ Required public variables:
 ```env
 VITE_SUPABASE_URL=
 VITE_SUPABASE_ANON_KEY=
-VITE_FANNY_API_BASE_URL=
-VITE_FANNY_ENV=preview
+VITE_FANNI_API_BASE_URL=
+VITE_FANNI_ENV=preview
 VITE_EXTERNAL_WRITES_ENABLED=false
 VITE_REAL_CLIENT_DATA_ENABLED=false
 ```
@@ -33,12 +33,12 @@ Server-only variables:
 ```env
 NODE_ENV=production
 PORT=7744
-FANNY_PUBLIC_ORIGIN=
-FANNY_DATABASE_URL=
+FANNI_PUBLIC_ORIGIN=
+FANNI_DATABASE_URL=
 SUPABASE_URL=
 SUPABASE_SERVICE_ROLE_KEY=
-FANNY_JWT_SIGNING_SECRET=
-FANNY_WEBHOOK_SIGNING_SECRET=
+FANNI_JWT_SIGNING_SECRET=
+FANNI_WEBHOOK_SIGNING_SECRET=
 OPENAI_API_KEY=
 ELEVENLABS_API_KEY=
 ELEVENLABS_VOICE_ID=
@@ -58,7 +58,7 @@ The runtime should bind privately and be exposed through Caddy only at an approv
 
 ## Supabase isolation
 
-The migration creates a dedicated `fanny` schema containing:
+The migration creates a dedicated `fanni` schema containing:
 
 - organizations;
 - memberships;
@@ -68,12 +68,12 @@ The migration creates a dedicated `fanny` schema containing:
 - approvals;
 - audit events.
 
-Every operational table includes `organization_id`; workspace data includes `workspace_id`. RLS checks membership and role. Do not query Botanic Memories application tables from Agent Fanny.
+Every operational table includes `organization_id`; workspace data includes `workspace_id`. RLS checks membership and role. Do not query Botanic Memories application tables from Agent Fanni.
 
 Recommended initial records:
 
 - organization: `kupuri-media`;
-- workspace: `agent-fanny-demo`;
+- workspace: `agent-fanni-demo`;
 - data class: `synthetic`;
 - external writes: `false`.
 
@@ -82,7 +82,7 @@ Recommended initial records:
 Local services communicate over loopback only:
 
 ```text
-SpeakFlow MCP -> Fanny Orchestrator -> QVAC local inference
+SpeakFlow MCP -> Fanni Orchestrator -> QVAC local inference
                               |-> Space Agent computer-use adapter
                               |-> encrypted local evidence store
                               |-> Hostinger control API for approved metadata only
