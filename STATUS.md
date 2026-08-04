@@ -1,4 +1,4 @@
-# Agent Fanny Status
+# Agent Fanni Status
 
 ## Mode
 Brownfield integration into an initialized but otherwise empty target repository.
@@ -13,9 +13,9 @@ Brownfield integration into an initialized but otherwise empty target repository
 - Eight-stage workflow navigator
 - Voice adapter placeholder
 - Secret-free environment contract
-- Agent Fanny ICM constitution
+- Agent Fanni ICM constitution
 - Uploaded skill-to-workflow conversion map
-- Supabase `fanny` schema migration with organization/workspace boundaries and RLS policies
+- Supabase `fanni` schema migration with organization/workspace boundaries and RLS policies
 
 ## Not yet verified
 - Dependency installation and production build
