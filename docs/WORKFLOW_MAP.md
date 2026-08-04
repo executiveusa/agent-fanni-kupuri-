@@ -1,6 +1,6 @@
-# Agent Fanny End-to-End Workflow Map
+# Agent Fanni End-to-End Workflow Map
 
-The uploaded packages are source material, not runtime skills. Fanny uses them as stage procedures inside complete business workflows.
+The uploaded packages are source material, not runtime skills. Fanni uses them as stage procedures inside complete business workflows.
 
 ## Workflow A — Media Intelligence to Executive Report
 
@@ -77,4 +77,4 @@ Source: Kupuri Agent Alex ICM package.
 
 ## Autonomy policy
 
-Fanny does not require a human inside routine, pre-approved stages. Human approval is required only at explicit authority boundaries: new data classes, credentials, spending, legal claims, external publishing without prior policy, destructive operations, and production release. The goal is zero unnecessary human handling—not zero governance.
+Fanni does not require a human inside routine, pre-approved stages. Human approval is required only at explicit authority boundaries: new data classes, credentials, spending, legal claims, external publishing without prior policy, destructive operations, and production release. The goal is zero unnecessary human handling—not zero governance.
