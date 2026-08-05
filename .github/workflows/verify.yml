@@ -6,12 +6,13 @@ on:
     branches:
       - main
       - feat/fanni-sovereign-prototype
+      - feat/agentforge-production-hardening
 
 permissions:
   contents: read
 
 jobs:
-  build:
+  verify:
     runs-on: ubuntu-latest
     timeout-minutes: 10
     steps:
@@ -22,9 +23,16 @@ jobs:
         uses: actions/setup-node@v4
         with:
           node-version: 22
+          cache: npm
 
       - name: Install dependencies
         run: npm install
+
+      - name: Validate production configuration
+        run: npm run validate:production
+
+      - name: Run runtime tests
+        run: npm test
 
       - name: Build
         run: npm run build
@@ -34,6 +42,7 @@ jobs:
           test ! -f .env
           test ! -f .env.local
           test ! -f .env.production
+          ! git grep -nE '(sk-proj-|sk-[A-Za-z0-9_-]{32,}|service_role[^[:space:]]*[=:][^[:space:]]+)' -- ':!package-lock.json'
 
       - name: Upload build artifact
         uses: actions/upload-artifact@v4
