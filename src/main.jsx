@@ -19,6 +19,7 @@ import './styles.css';
 import { syntheticMentions } from './runtime/syntheticMentions';
 import { reportToMarkdown, runMediaIntelligenceWorkflow, workflowStages } from './runtime/workflowEngine';
 import { runHeartbeat } from './runtime/heartbeat';
+import { persistHeartbeat, persistWorkflowRun, persistenceConfigured } from './runtime/persistence';
 
 const workflowMenu = [
   { id: 'media', name: 'Weekly media intelligence', stage: '00–07', status: 'ready', value: 'Real deterministic synthetic workflow' },
@@ -43,21 +44,41 @@ function App() {
   const [run, setRun] = useState(null);
   const [heartbeat, setHeartbeat] = useState(null);
   const [running, setRunning] = useState(false);
+  const [persistence, setPersistence] = useState({ state: persistenceConfigured ? 'ready' : 'local-only', message: persistenceConfigured ? 'Supabase configured; authentication required to persist.' : 'Local-only mode; Supabase public values are missing.' });
   const selected = useMemo(() => workflowMenu.find((item) => item.id === active), [active]);
 
-  const executeSelected = () => {
+  const storeResult = async (kind, value) => {
+    if (!persistenceConfigured) return;
+    setPersistence({ state: 'saving', message: `Saving ${kind} evidence…` });
+    try {
+      const result = kind === 'workflow' ? await persistWorkflowRun(value) : await persistHeartbeat(value);
+      setPersistence(result.enabled
+        ? { state: 'saved', message: `${kind === 'workflow' ? 'Workflow' : 'Heartbeat'} evidence persisted to workspace ${result.workspaceId}.` }
+        : { state: 'local-only', message: result.reason });
+    } catch (error) {
+      setPersistence({ state: 'failed', message: `Persistence failed safely: ${error.message}` });
+    }
+  };
+
+  const executeSelected = async () => {
     if (selected.status === 'locked') return;
     setRunning(true);
-    window.setTimeout(() => {
+    try {
       if (active === 'heartbeat') {
-        setHeartbeat(runHeartbeat({ workflowRun: run }));
+        const result = runHeartbeat({ workflowRun: run });
+        setHeartbeat(result);
+        await storeResult('heartbeat', result);
       } else {
         const result = runMediaIntelligenceWorkflow(syntheticMentions);
+        const heartbeatResult = runHeartbeat({ workflowRun: result });
         setRun(result);
-        setHeartbeat(runHeartbeat({ workflowRun: result }));
+        setHeartbeat(heartbeatResult);
+        await storeResult('workflow', result);
+        await storeResult('heartbeat', heartbeatResult);
       }
+    } finally {
       setRunning(false);
-    }, 250);
+    }
   };
 
   const completedStages = run?.artifacts?.length || 0;
@@ -75,12 +96,13 @@ function App() {
         <div className="hero-copy">
           <span className="eyebrow"><Sparkles size={15}/> Private AI operations</span>
           <h1>Turn signals into evidence, decisions and finished work.</h1>
-          <p>Fanni now runs a deterministic media-intelligence workflow and an executable heartbeat. Every stage emits artifacts, evidence and measurable demonstration value.</p>
+          <p>Fanni runs a deterministic media-intelligence workflow, an executable heartbeat, and a fail-closed Supabase evidence adapter. Every stage emits inspectable proof.</p>
           <div className="hero-actions">
             <button className="primary" onClick={executeSelected} disabled={running || selected.status === 'locked'}><Play size={17}/>{running ? 'Executing…' : `Run ${selected.name}`}</button>
             <button className={voice ? 'secondary active' : 'secondary'} onClick={() => setVoice(!voice)}><AudioLines size={17}/>{voice ? 'Voice demo active' : 'Activate voice state'}</button>
             {run && <button className="secondary" onClick={() => downloadText('agent-fanni-weekly-report.md', reportToMarkdown(run))}><Download size={17}/>Download report</button>}
           </div>
+          <div className={`persistence-status ${persistence.state}`}><Database size={15}/><span>{persistence.message}</span></div>
         </div>
         <div className="avatar-card" aria-label="Agent Fanni avatar placeholder">
           <div className="avatar-orbit"></div>
@@ -93,7 +115,7 @@ function App() {
       <section className="metrics">
         <article><Activity/><div><strong>{run?.report.totalInput ?? syntheticMentions.length}</strong><span>Synthetic input records</span></div></article>
         <article><ShieldCheck/><div><strong>{run?.report.reviewRequired ?? '—'}</strong><span>Items requiring review</span></div></article>
-        <article><Database/><div><strong>{run?.report.duplicatesRemoved ?? '—'}</strong><span>Duplicates removed</span></div></article>
+        <article><Database/><div><strong>{persistence.state === 'saved' ? 'Saved' : 'Local'}</strong><span>Evidence persistence</span></div></article>
         <article><CircleDollarSign/><div><strong>{run ? `${run.metrics.estimatedMinutesSaved}m` : '—'}</strong><span>Estimated time saved</span></div></article>
       </section>
 
@@ -136,8 +158,8 @@ function App() {
 
           <div className="proof-grid">
             <div><CheckCircle2/><strong>Executable</strong><span>Stages generate real browser artifacts.</span></div>
-            <div><FileText/><strong>Exportable</strong><span>The weekly report downloads as Markdown.</span></div>
-            <div><ShieldCheck/><strong>Fail closed</strong><span>Publishing and real data remain disabled.</span></div>
+            <div><FileText/><strong>Persistable</strong><span>Authenticated runs write isolated evidence to Supabase.</span></div>
+            <div><ShieldCheck/><strong>Fail closed</strong><span>Missing auth or configuration leaves data local.</span></div>
           </div>
         </div>
       </section>
