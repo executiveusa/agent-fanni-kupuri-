@@ -1,0 +1,87 @@
+cog:
+  name: media-intelligence-weekly
+  description: Produce verified bilingual media intelligence with bounded memory and rollback.
+  version: 1
+
+agents:
+  - id: ingest
+    type: deterministic
+    contract: workflows/media-intelligence-weekly/stages/ingest/CONTEXT.md
+  - id: normalize
+    type: deterministic
+    contract: workflows/media-intelligence-weekly/stages/normalize/CONTEXT.md
+  - id: deduplicate
+    type: deterministic
+    contract: workflows/media-intelligence-weekly/stages/deduplicate/CONTEXT.md
+  - id: classify
+    type: model
+    model_route: classification
+    contract: workflows/media-intelligence-weekly/stages/classify/CONTEXT.md
+  - id: verify
+    type: policy
+    contract: workflows/media-intelligence-weekly/stages/verify/CONTEXT.md
+  - id: synthesize
+    type: model
+    model_route: synthesis
+    contract: workflows/media-intelligence-weekly/stages/synthesize/CONTEXT.md
+  - id: report
+    type: model
+    model_route: report
+    contract: workflows/media-intelligence-weekly/stages/report/CONTEXT.md
+  - id: measure
+    type: deterministic
+    contract: workflows/media-intelligence-weekly/stages/measure/CONTEXT.md
+
+memory:
+  - id: workspace_memory
+    scope: workspace
+    query_before: [classify, synthesize, report]
+    update_after: [report]
+    query_keys: [workspace_id, workflow_key, approved_context]
+    update_keys: [verified_summary, approved_findings]
+    max_results: 12
+    write_requires_review: false
+  - id: persona_memory
+    scope: persona
+    query_before: [synthesize, report]
+    update_after: []
+    read_only: true
+
+flow:
+  start: ingest
+  transitions:
+    ingest: normalize
+    normalize: deduplicate
+    deduplicate: classify
+    classify: verify
+    verify:
+      decision_key: route
+      choices:
+        approved: synthesize
+        review: report
+        reject: rollback
+      fallback: report
+      max_visits: 2
+    synthesize: report
+    report: measure
+    measure:
+      end: true
+
+resilience:
+  timeout_seconds: 120
+  max_total_visits: 20
+  checkpoint_before: [classify, synthesize, report]
+  checkpoint_after: [verify, measure]
+  rollback_node: rollback
+  retry:
+    max_attempts: 2
+    backoff_ms: 500
+    retryable_errors: [timeout, rate_limit, provider_unavailable]
+
+output:
+  end: measure
+  require:
+    - report
+    - metrics
+    - proof
+    - rollback_ref

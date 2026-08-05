@@ -1,0 +1,63 @@
+routes:
+  classification:
+    mode: structured
+    primary:
+      provider: openai
+      model_env: OPENAI_CLASSIFICATION_MODEL
+    fallbacks:
+      - provider: local
+        base_url_env: QVAC_BASE_URL
+        model_env: QVAC_MODEL
+    timeout_ms: 30000
+    max_retries: 2
+    require_json: true
+
+  synthesis:
+    mode: reasoning
+    primary:
+      provider: openai
+      model_env: OPENAI_SYNTHESIS_MODEL
+    fallbacks:
+      - provider: local
+        base_url_env: QVAC_BASE_URL
+        model_env: QVAC_MODEL
+    timeout_ms: 60000
+    max_retries: 2
+
+  report:
+    mode: editorial
+    primary:
+      provider: openai
+      model_env: OPENAI_REPORT_MODEL
+    fallbacks:
+      - provider: local
+        base_url_env: QVAC_BASE_URL
+        model_env: QVAC_MODEL
+    timeout_ms: 60000
+    max_retries: 2
+
+  speech_to_text:
+    primary:
+      provider: fal
+      endpoint: fal-ai/wizper
+    fallbacks:
+      - provider: fal
+        endpoint: fal-ai/elevenlabs/speech-to-text/scribe-v2
+    languages: [en, es]
+
+  text_to_speech:
+    primary:
+      provider: fal
+      endpoint: fal-ai/elevenlabs/tts/turbo-v2.5
+    fallbacks:
+      - provider: fal
+        endpoint: fal-ai/minimax/speech-02-hd
+    languages: [en, es]
+
+policy:
+  secrets_server_only: true
+  provider_payload_logging: redacted
+  fail_closed_on_missing_route: true
+  allow_model_override_by_workspace: true
+  require_cost_limit: true
+  default_daily_cost_limit_usd: 10

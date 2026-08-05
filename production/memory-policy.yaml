@@ -1,0 +1,32 @@
+memory_policy:
+  version: 1
+  default_scope: workspace
+  deny_cross_workspace_reads: true
+  deny_cross_workspace_writes: true
+  require_source_attribution: true
+  require_redaction_before_persist: true
+  retrieval:
+    max_recent_turns: 20
+    max_semantic_results: 12
+    minimum_similarity: 0.72
+    allowed_scopes: [workspace, persona, workflow]
+  persistence:
+    raw_audio: false
+    raw_screen_recording: false
+    secrets: false
+    provider_payloads: redacted
+    personal_identifiers: redacted
+  retention:
+    synthetic_days: 90
+    internal_days: 180
+    confidential_days: 30
+    regulated_days: 0
+  writes:
+    persona_memory_requires_owner_approval: true
+    long_term_memory_requires_evidence: true
+    external_source_memory_requires_review: true
+  injection_defense:
+    treat_retrieved_content_as_untrusted: true
+    ignore_embedded_instructions: true
+    strip_tool_calls_from_memory: true
+    preserve_source_hash: true
