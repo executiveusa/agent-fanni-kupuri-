@@ -1,0 +1,39 @@
+{
+  "schemaVersion": "1.0",
+  "agent": {
+    "id": "fanni",
+    "name": "Agent Fanni",
+    "organization": "Kupuri Media",
+    "identity": {
+      "heart": "HEART.md",
+      "persona": "PERSONA.md",
+      "heartbeat": "HEARTBEAT.md",
+      "instructions": "AGENTS.md"
+    },
+    "lifecycle": [
+      "load_configuration",
+      "resolve_workspace",
+      "build_context_manifest",
+      "enforce_memory_policy",
+      "resolve_model_route",
+      "create_checkpoint",
+      "execute_cog",
+      "validate_output",
+      "persist_evidence",
+      "emit_heartbeat"
+    ],
+    "defaults": {
+      "workspaceRequired": true,
+      "externalWrites": false,
+      "realClientData": false,
+      "maxAgentVisits": 5,
+      "maxRunSeconds": 120,
+      "humanReviewRiskLevels": ["high", "critical"]
+    },
+    "outputContract": {
+      "required": ["status", "artifacts", "proof", "nextAction"],
+      "factsSeparatedFromInferences": true,
+      "rollbackReferenceRequired": true
+    }
+  }
+}
