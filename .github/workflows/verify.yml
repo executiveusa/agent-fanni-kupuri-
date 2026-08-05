@@ -41,7 +41,7 @@ jobs:
           test ! -f .env
           test ! -f .env.local
           test ! -f .env.production
-          ! git grep -nE '(sk-proj-|sk-[A-Za-z0-9_-]{32,}|service_role[^[:space:]]*[=:][^[:space:]]+)' -- ':!package-lock.json'
+          ! git grep -nE '(sk-proj-|sk-[A-Za-z0-9_-]{32,}|service_role[^[:space:]]*[=:][^[:space:]]+)' -- ':!package-lock.json' ':!.github/workflows/verify.yml'
 
       - name: Upload build artifact
         uses: actions/upload-artifact@v4
