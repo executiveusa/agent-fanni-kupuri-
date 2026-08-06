@@ -1,7 +1,7 @@
 {
   "name": "agent-fanni-kupuri",
   "private": true,
-  "version": "0.4.0",
+  "version": "0.5.0",
   "type": "module",
   "scripts": {
     "start": "node scripts/start-fanni-space.mjs",
@@ -14,9 +14,10 @@
     "lint": "eslint src server scripts tests --ext .js,.jsx --max-warnings 0",
     "typecheck": "tsc --noEmit",
     "test": "node --test tests/*.test.js",
-    "test:unit": "node --test tests/production-runtime.test.js tests/checkpoint-rollback.test.js tests/zernio-social.test.js",
+    "test:unit": "node --test tests/production-runtime.test.js tests/checkpoint-rollback.test.js tests/zernio-social.test.js tests/fanni-pulso.test.js",
     "test:integration": "node --test tests/workspace-isolation.test.js",
     "test:e2e": "echo 'E2E requires live Supabase + deployed runtime; see docs/LOCAL_DEVELOPMENT.md'",
+    "demo:pulso": "node scripts/run-fanni-pulso-demos.mjs",
     "zernio:check": "node scripts/zernio-setup.mjs check",
     "zernio:setup": "node scripts/zernio-setup.mjs",
     "validate:production": "node scripts/validate-production.mjs",
