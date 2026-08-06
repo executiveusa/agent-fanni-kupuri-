@@ -4,7 +4,8 @@
   "version": "0.3.0",
   "type": "module",
   "scripts": {
-    "space": "node space-agent/space.js serve",
+    "start": "node scripts/start-fanni-space.mjs",
+    "space": "CUSTOMWARE_PATH=./customware node space-agent/space.js serve",
     "space:dev": "CUSTOMWARE_PATH=./customware node space-agent/space.js serve",
     "dev": "vite",
     "build": "vite build",

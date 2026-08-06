@@ -266,6 +266,15 @@ export function ChatApp({ onNavigate }) {
         </div>
 
         <div className="chat-topbar__actions">
+          <a
+            href="http://localhost:3000/enter"
+            target="_blank"
+            rel="noopener noreferrer"
+            className="btn-primary btn-sm"
+            style={{ display: 'inline-flex', alignItems: 'center', gap: '0.4rem', textDecoration: 'none', padding: '0.35rem 0.75rem', fontSize: '0.85rem' }}
+          >
+            <span>🚀</span> {lang === 'en' ? 'Space Agent Workspace' : 'Espacio Space Agent'}
+          </a>
           <button className="lang-toggle" onClick={toggleLang} aria-label={`Switch to ${lang === 'en' ? 'Spanish' : 'English'}`}>
             {lang === 'en' ? 'ES' : 'EN'}
           </button>

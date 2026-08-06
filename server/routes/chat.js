@@ -61,5 +61,49 @@ export function chatRouter(router, { requireAuth, resolveWorkspace, llmAdapters,
     }
   });
 
+  router.post('/v1/chat/completions', requireAuth, resolveWorkspace, async (req, res) => {
+    try {
+      const { messages, model, temperature } = req.body || {};
+      const lastUserMsg = Array.isArray(messages) ? [...messages].reverse().find(m => m.role === 'user')?.content : '';
+
+      if (!messages || !messages.length) {
+        return res.status(400).json({ error: { message: 'messages array is required', type: 'invalid_request_error' } });
+      }
+
+      const activeRoute = llmRoute;
+      if (!activeRoute?.primary) {
+        return res.status(503).json({ error: { message: 'No LLM providers available', type: 'api_error' } });
+      }
+
+      const result = await routeProvider({
+        route: activeRoute,
+        adapters: llmAdapters,
+        input: { messages, temperature }
+      });
+
+      res.json({
+        id: `chatcmpl-${Date.now()}`,
+        object: 'chat.completion',
+        created: Math.floor(Date.now() / 1000),
+        model: model || result.provider,
+        choices: [
+          {
+            index: 0,
+            message: { role: 'assistant', content: result.output.text },
+            finish_reason: 'stop'
+          }
+        ],
+        usage: {
+          prompt_tokens: result.output.inputTokens || 0,
+          completion_tokens: result.output.outputTokens || 0,
+          total_tokens: (result.output.inputTokens || 0) + (result.output.outputTokens || 0)
+        }
+      });
+    } catch (error) {
+      console.error('[chat/completions]', error.message);
+      res.status(502).json({ error: { message: error.message, type: 'api_error' } });
+    }
+  });
+
   return router;
 }
