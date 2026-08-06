@@ -1,0 +1,143 @@
+cog:
+  name: SocialMediaOperations
+  description: Multi-client Kupuri Media social publishing, engagement, analytics, and reconciliation through Zernio.
+  max_total_visits: 24
+  chat_memory_enabled: false
+
+agents:
+  - id: resolve_client
+    type: deterministic
+    context: [AGENTS.md, HEART.md, PERSONA.md, production/social-media-policy.yaml]
+  - id: collect_brief
+    type: reasoning
+    model_route: synthesis
+  - id: research_claims
+    type: reasoning
+    model_route: classification
+  - id: create_content
+    type: reasoning
+    model_route: synthesis
+  - id: adapt_platforms
+    type: reasoning
+    model_route: synthesis
+  - id: policy_check
+    type: deterministic
+  - id: approval_gate
+    type: deterministic
+  - id: checkpoint
+    type: deterministic
+  - id: publish
+    type: tool
+    tool: zernio.create_post
+  - id: reconcile
+    type: tool
+    tool: zernio.get_post
+  - id: measure
+    type: tool
+    tool: zernio.analytics
+  - id: learn
+    type: reasoning
+    model_route: classification
+  - id: inbox_triage
+    type: tool
+    tool: zernio.inbox
+  - id: prepare_replies
+    type: reasoning
+    model_route: synthesis
+  - id: reply_approval
+    type: deterministic
+  - id: send_replies
+    type: tool
+    tool: zernio.reply
+  - id: report
+    type: reasoning
+    model_route: reports
+  - id: rollback
+    type: deterministic
+
+memory:
+  - id: client_brand_memory
+    scope: workspace
+    query_before: [collect_brief, create_content, adapt_platforms, prepare_replies]
+    update_after: [learn]
+    query_keys: [workspace_id, campaign_id, brand_voice]
+    update_keys: [approved_patterns, rejected_patterns, measured_results]
+  - id: social_history
+    scope: workspace
+    query_before: [create_content, adapt_platforms]
+    update_after: [reconcile, measure]
+    query_keys: [workspace_id, platforms, campaign_id]
+    update_keys: [post_ids, final_copy, platform_results]
+
+flow:
+  start: resolve_client
+  transitions:
+    resolve_client: collect_brief
+    collect_brief: research_claims
+    research_claims: create_content
+    create_content: adapt_platforms
+    adapt_platforms: policy_check
+    policy_check:
+      route:
+        pass: approval_gate
+        revise: create_content
+        block: report
+      fallback: report
+      max_visits: 3
+    approval_gate:
+      route:
+        approved: checkpoint
+        changes_requested: create_content
+        rejected: report
+        awaiting_approval: report
+      fallback: report
+      max_visits: 3
+    checkpoint: publish
+    publish:
+      route:
+        accepted: reconcile
+        retryable_failure: publish
+        permanent_failure: rollback
+      fallback: rollback
+      max_visits: 3
+    reconcile:
+      route:
+        published: measure
+        scheduled: measure
+        partial_failure: report
+        failed: rollback
+      fallback: report
+      max_visits: 3
+    measure: learn
+    learn: inbox_triage
+    inbox_triage:
+      route:
+        needs_reply: prepare_replies
+        no_action: report
+        escalation: report
+      fallback: report
+    prepare_replies: reply_approval
+    reply_approval:
+      route:
+        approved: send_replies
+        awaiting_approval: report
+        rejected: report
+      fallback: report
+    send_replies: report
+    rollback: report
+    report:
+      end: true
+
+required_output:
+  - workspace_id
+  - client_id
+  - zernio_profile_id
+  - work_item_id
+  - approval_id
+  - checkpoint_id
+  - idempotency_key
+  - platform_results
+  - webhook_reconciliation
+  - evidence
+  - risks
+  - next_action
