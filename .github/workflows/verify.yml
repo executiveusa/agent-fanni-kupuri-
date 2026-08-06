@@ -6,6 +6,7 @@ on:
     branches:
       - main
       - claude/fanni-production-contract-7p5wry
+      - feat/zernio-social-operations
 
 permissions:
   contents: read
