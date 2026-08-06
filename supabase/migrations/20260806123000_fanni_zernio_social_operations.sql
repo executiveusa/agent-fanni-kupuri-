@@ -117,27 +117,27 @@ alter table fanni.social_webhook_events enable row level security;
 alter table fanni.social_metrics enable row level security;
 
 create policy social_integrations_member_access on fanni.social_integrations
-for all using (fanni.is_organization_member(organization_id))
-with check (fanni.is_organization_member(organization_id));
+for all using (fanni.is_member(organization_id))
+with check (fanni.is_member(organization_id));
 
 create policy social_accounts_member_access on fanni.social_accounts
-for all using (fanni.is_organization_member(organization_id))
-with check (fanni.is_organization_member(organization_id));
+for all using (fanni.is_member(organization_id))
+with check (fanni.is_member(organization_id));
 
 create policy social_jobs_member_access on fanni.social_jobs
-for all using (fanni.is_organization_member(organization_id))
-with check (fanni.is_organization_member(organization_id));
+for all using (fanni.is_member(organization_id))
+with check (fanni.is_member(organization_id));
 
 create policy social_actions_member_access on fanni.social_actions
-for all using (fanni.is_organization_member(organization_id))
-with check (fanni.is_organization_member(organization_id));
+for all using (fanni.is_member(organization_id))
+with check (fanni.is_member(organization_id));
 
 create policy social_webhooks_member_read on fanni.social_webhook_events
-for select using (organization_id is not null and fanni.is_organization_member(organization_id));
+for select using (organization_id is not null and fanni.is_member(organization_id));
 
 create policy social_metrics_member_access on fanni.social_metrics
-for all using (fanni.is_organization_member(organization_id))
-with check (fanni.is_organization_member(organization_id));
+for all using (fanni.is_member(organization_id))
+with check (fanni.is_member(organization_id));
 
 create index if not exists social_jobs_workspace_status_idx on fanni.social_jobs(workspace_id, status, scheduled_for);
 create index if not exists social_actions_workspace_status_idx on fanni.social_actions(workspace_id, status, created_at desc);
