@@ -5,8 +5,7 @@ on:
   push:
     branches:
       - main
-      - feat/fanni-sovereign-prototype
-      - feat/agentforge-production-hardening
+      - claude/fanni-production-contract-7p5wry
 
 permissions:
   contents: read
@@ -14,7 +13,7 @@ permissions:
 jobs:
   verify:
     runs-on: ubuntu-latest
-    timeout-minutes: 10
+    timeout-minutes: 15
     steps:
       - name: Checkout
         uses: actions/checkout@v4
@@ -23,12 +22,28 @@ jobs:
         uses: actions/setup-node@v4
         with:
           node-version: 22
+          cache: npm
 
       - name: Install dependencies
         run: npm install
 
+      - name: Security scan (no secrets in tracked files)
+        run: npm run security:scan
+
+      - name: Lint
+        run: npm run lint
+
+      - name: Type check
+        run: npm run typecheck
+
       - name: Validate production configuration
         run: npm run validate:production
+
+      - name: Validate migration files
+        run: npm run validate:migrations
+
+      - name: Run unit tests
+        run: npm run test:unit
 
       - name: Run runtime tests
         run: npm test
@@ -41,7 +56,8 @@ jobs:
           test ! -f .env
           test ! -f .env.local
           test ! -f .env.production
-          ! git grep -nE '(sk-proj-|sk-[A-Za-z0-9_-]{32,}|service_role[^[:space:]]*[=:][^[:space:]]+)' -- ':!package-lock.json' ':!.github/workflows/verify.yml'
+          ! git grep -nE '(sk-proj-|sk-[A-Za-z0-9_-]{32,}|service_role[^[:space:]]*[=:][^[:space:]]+)' \
+            -- ':!package-lock.json' ':!.github/workflows/verify.yml'
 
       - name: Upload build artifact
         uses: actions/upload-artifact@v4

@@ -1,170 +1,124 @@
-import React, { useMemo, useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import { createRoot } from 'react-dom/client';
-import {
-  Activity,
-  AudioLines,
-  Bot,
-  CheckCircle2,
-  CircleDollarSign,
-  Database,
-  Download,
-  FileText,
-  HeartPulse,
-  LockKeyhole,
-  Play,
-  ShieldCheck,
-  Sparkles
-} from 'lucide-react';
 import './styles.css';
-import { syntheticMentions } from './runtime/syntheticMentions';
-import { reportToMarkdown, runMediaIntelligenceWorkflow, workflowStages } from './runtime/workflowEngine';
-import { runHeartbeat } from './runtime/heartbeat';
-import { persistHeartbeat, persistWorkflowRun, persistenceConfigured } from './runtime/persistence';
+import { LanguageContext, useLanguageProvider } from './hooks/useLanguage.js';
+import { AuthContext, useAuthProvider } from './hooks/useAuth.js';
+import { Landing } from './pages/Landing.jsx';
+import { Auth } from './pages/Auth.jsx';
+import { ChatApp } from './pages/ChatApp.jsx';
 
-const workflowMenu = [
-  { id: 'media', name: 'Weekly media intelligence', stage: '00–07', status: 'ready', value: 'Real deterministic synthetic workflow' },
-  { id: 'heartbeat', name: 'Run Fanni heartbeat', stage: 'HB', status: 'ready', value: 'Configuration, health, risk and next action' },
-  { id: 'strategy', name: 'Build content strategy', stage: '08', status: 'planned', value: 'Patterns, audience and platform choices' },
-  { id: 'publish', name: 'Publish and monitor', stage: '09', status: 'locked', value: 'External writes require both safety gates' }
-];
-
-function downloadText(filename, content, type = 'text/markdown') {
-  const blob = new Blob([content], { type });
-  const url = URL.createObjectURL(blob);
-  const anchor = document.createElement('a');
-  anchor.href = url;
-  anchor.download = filename;
-  anchor.click();
-  URL.revokeObjectURL(url);
+function getRoute() {
+  const hash = window.location.hash.replace('#', '') || '/';
+  if (hash === '/auth' || hash === '/auth/') return '/auth';
+  if (hash.startsWith('/app')) return '/app';
+  if (hash === '/privacy') return '/privacy';
+  if (hash === '/status') return '/status';
+  return '/';
 }
 
-function App() {
-  const [active, setActive] = useState('media');
-  const [voice, setVoice] = useState(false);
-  const [run, setRun] = useState(null);
-  const [heartbeat, setHeartbeat] = useState(null);
-  const [running, setRunning] = useState(false);
-  const [persistence, setPersistence] = useState({ state: persistenceConfigured ? 'ready' : 'local-only', message: persistenceConfigured ? 'Supabase configured; authentication required to persist.' : 'Local-only mode; Supabase public values are missing.' });
-  const selected = useMemo(() => workflowMenu.find((item) => item.id === active), [active]);
+function navigate(route) {
+  window.location.hash = route;
+}
 
-  const storeResult = async (kind, value) => {
-    if (!persistenceConfigured) return;
-    setPersistence({ state: 'saving', message: `Saving ${kind} evidence…` });
-    try {
-      const result = kind === 'workflow' ? await persistWorkflowRun(value) : await persistHeartbeat(value);
-      setPersistence(result.enabled
-        ? { state: 'saved', message: `${kind === 'workflow' ? 'Workflow' : 'Heartbeat'} evidence persisted to workspace ${result.workspaceId}.` }
-        : { state: 'local-only', message: result.reason });
-    } catch (error) {
-      setPersistence({ state: 'failed', message: `Persistence failed safely: ${error.message}` });
-    }
-  };
-
-  const executeSelected = async () => {
-    if (selected.status === 'locked') return;
-    setRunning(true);
-    try {
-      if (active === 'heartbeat') {
-        const result = runHeartbeat({ workflowRun: run });
-        setHeartbeat(result);
-        await storeResult('heartbeat', result);
-      } else {
-        const result = runMediaIntelligenceWorkflow(syntheticMentions);
-        const heartbeatResult = runHeartbeat({ workflowRun: result });
-        setRun(result);
-        setHeartbeat(heartbeatResult);
-        await storeResult('workflow', result);
-        await storeResult('heartbeat', heartbeatResult);
-      }
-    } finally {
-      setRunning(false);
-    }
-  };
-
-  const completedStages = run?.artifacts?.length || 0;
-  const progress = Math.round((completedStages / workflowStages.length) * 100);
-  const rows = run?.records || [];
-
+function Privacy() {
+  React.useContext(LanguageContext);
   return (
-    <main>
-      <header className="topbar">
-        <div className="brand"><span className="brand-mark">F</span><div><strong>Agent Fanni</strong><small>Kupuri Media · Sovereign Operations</small></div></div>
-        <div className="security"><LockKeyhole size={16} /> Executable synthetic prototype <span>External writes blocked</span></div>
-      </header>
-
-      <section className="hero">
-        <div className="hero-copy">
-          <span className="eyebrow"><Sparkles size={15}/> Private AI operations</span>
-          <h1>Turn signals into evidence, decisions and finished work.</h1>
-          <p>Fanni runs a deterministic media-intelligence workflow, an executable heartbeat, and a fail-closed Supabase evidence adapter. Every stage emits inspectable proof.</p>
-          <div className="hero-actions">
-            <button className="primary" onClick={executeSelected} disabled={running || selected.status === 'locked'}><Play size={17}/>{running ? 'Executing…' : `Run ${selected.name}`}</button>
-            <button className={voice ? 'secondary active' : 'secondary'} onClick={() => setVoice(!voice)}><AudioLines size={17}/>{voice ? 'Voice demo active' : 'Activate voice state'}</button>
-            {run && <button className="secondary" onClick={() => downloadText('agent-fanni-weekly-report.md', reportToMarkdown(run))}><Download size={17}/>Download report</button>}
-          </div>
-          <div className={`persistence-status ${persistence.state}`}><Database size={15}/><span>{persistence.message}</span></div>
-        </div>
-        <div className="avatar-card" aria-label="Agent Fanni avatar placeholder">
-          <div className="avatar-orbit"></div>
-          <div className="avatar"><span>F</span></div>
-          <div className="presence"><i></i>{running ? 'Working' : voice ? 'Listening locally' : 'Ready to work'}</div>
-          <p>Heart, persona and heartbeat loaded. Final voice and avatar remain replaceable adapters.</p>
-        </div>
-      </section>
-
-      <section className="metrics">
-        <article><Activity/><div><strong>{run?.report.totalInput ?? syntheticMentions.length}</strong><span>Synthetic input records</span></div></article>
-        <article><ShieldCheck/><div><strong>{run?.report.reviewRequired ?? '—'}</strong><span>Items requiring review</span></div></article>
-        <article><Database/><div><strong>{persistence.state === 'saved' ? 'Saved' : 'Local'}</strong><span>Evidence persistence</span></div></article>
-        <article><CircleDollarSign/><div><strong>{run ? `${run.metrics.estimatedMinutesSaved}m` : '—'}</strong><span>Estimated time saved</span></div></article>
-      </section>
-
-      <section className="workspace">
-        <aside>
-          <div className="section-title"><Bot size={18}/><span>Executable workflows</span></div>
-          <nav>{workflowMenu.map((item) => <button key={item.id} className={active === item.id ? 'workflow active' : 'workflow'} onClick={() => setActive(item.id)}><span>{item.stage}</span><div><strong>{item.name}</strong><small>{item.value}</small></div><em data-status={item.status}>{item.status}</em></button>)}</nav>
-        </aside>
-
-        <div className="panel">
-          <div className="panel-head"><div><span>{selected.stage}</span><h2>{selected.name}</h2><p>{selected.value}</p></div><span className="mode">Synthetic data only</span></div>
-          <div className="progress"><div style={{width: `${active === 'media' ? progress : heartbeat ? 100 : 0}%`}}></div></div>
-
-          {active === 'heartbeat' ? (
-            <section className="heartbeat-panel">
-              <div className="heartbeat-title"><HeartPulse/><div><strong>{heartbeat ? heartbeat.systemStatus : 'Not run'}</strong><span>{heartbeat?.timestamp || 'Run the heartbeat to inspect the system.'}</span></div></div>
-              {heartbeat && <>
-                <div className="status-grid">
-                  <div><span>External writes</span><strong>{heartbeat.externalWrites}</strong></div>
-                  <div><span>Real client data</span><strong>{heartbeat.realClientData}</strong></div>
-                  <div><span>Unknowns</span><strong>{heartbeat.unknowns.length}</strong></div>
-                  <div><span>Human attention</span><strong>{heartbeat.humanAttentionRequired ? 'Required' : 'No'}</strong></div>
-                </div>
-                <div className="evidence-list"><h3>Facts</h3>{heartbeat.facts.map((fact) => <p key={fact}><CheckCircle2 size={15}/>{fact}</p>)}</div>
-                <div className="next-action"><strong>Next action</strong><p>{heartbeat.nextAction}</p></div>
-              </>}
-            </section>
-          ) : (
-            <>
-              <div className="stage-strip">{workflowStages.map((stage) => <span key={stage} className={run?.artifacts.some((artifact) => artifact.stage === stage) ? 'complete' : ''}>{stage}</span>)}</div>
-              <div className="table-wrap">
-                <table>
-                  <thead><tr><th>Source</th><th>Signal</th><th>Topic</th><th>Sentiment</th><th>Risk</th><th>Confidence</th></tr></thead>
-                  <tbody>{rows.length ? rows.map((row) => <tr key={row.id}><td>{row.source}</td><td>{row.text}</td><td>{row.topic}</td><td>{row.sentiment}</td><td><span className={`risk ${row.risk.toLowerCase()}`}>{row.risk}</span></td><td>{row.confidence}%</td></tr>) : <tr><td colSpan="6">Run the workflow to produce classified records.</td></tr>}</tbody>
-                </table>
-              </div>
-              {run && <div className="report-summary"><FileText/><div><strong>{run.report.title}</strong><p>{run.report.executiveSummary}</p><small>{run.report.disclaimer}</small></div></div>}
-            </>
-          )}
-
-          <div className="proof-grid">
-            <div><CheckCircle2/><strong>Executable</strong><span>Stages generate real browser artifacts.</span></div>
-            <div><FileText/><strong>Persistable</strong><span>Authenticated runs write isolated evidence to Supabase.</span></div>
-            <div><ShieldCheck/><strong>Fail closed</strong><span>Missing auth or configuration leaves data local.</span></div>
-          </div>
-        </div>
-      </section>
-    </main>
+    <div className="prose-page">
+      <nav className="prose-nav">
+        <button className="landing-nav__brand" onClick={() => navigate('/')}>
+          <span className="landing-nav__wordmark">FANNI</span>
+        </button>
+      </nav>
+      <article className="prose">
+        <h1>Privacy Statement</h1>
+        <p>Agent Fanni by Kupuri Media is designed with privacy as a default, not an option.</p>
+        <h2>Data handling</h2>
+        <ul>
+          <li>All workspace data is isolated by organization and workspace at the database layer.</li>
+          <li>External writes require explicit authorization from a workspace owner or admin.</li>
+          <li>Real client data is disabled by default.</li>
+          <li>Voice recordings are processed and not retained beyond the transcription pipeline.</li>
+          <li>Secrets never leave the server environment.</li>
+        </ul>
+        <h2>Contact</h2>
+        <p>For privacy inquiries, contact your Kupuri Media workspace administrator.</p>
+      </article>
+    </div>
   );
 }
 
-createRoot(document.getElementById('root')).render(<React.StrictMode><App /></React.StrictMode>);
+function Status() {
+  const [health, setHealth] = useState(null);
+  const API_BASE = import.meta.env.VITE_FANNI_API_BASE_URL || '';
+
+  useEffect(() => {
+    if (!API_BASE) return;
+    fetch(`${API_BASE}/api/health`).then(r => r.json()).then(setHealth).catch(() => {});
+  }, [API_BASE]);
+
+  return (
+    <div className="prose-page">
+      <nav className="prose-nav">
+        <button className="landing-nav__brand" onClick={() => navigate('/')}>
+          <span className="landing-nav__wordmark">FANNI</span>
+        </button>
+      </nav>
+      <article className="prose">
+        <h1>System Status</h1>
+        {!API_BASE && <p>API not configured. Status endpoint unavailable.</p>}
+        {API_BASE && !health && <p>Loading…</p>}
+        {health && (
+          <>
+            <p><strong>Status:</strong> {health.status}</p>
+            <p><strong>Version:</strong> {health.version}</p>
+            <p><strong>Uptime:</strong> {health.uptime}s</p>
+            <p><strong>External writes:</strong> {health.safetyGates?.externalWritesEnabled ? 'enabled' : 'blocked'}</p>
+          </>
+        )}
+      </article>
+    </div>
+  );
+}
+
+function Router({ route, setRoute }) {
+  const navigate = (r) => setRoute(r);
+
+  switch (route) {
+    case '/auth': return <Auth onNavigate={navigate} onAuthenticated={() => setRoute('/app')} />;
+    case '/app': return <ChatApp onNavigate={navigate} />;
+    case '/privacy': return <Privacy />;
+    case '/status': return <Status />;
+    default: return <Landing onNavigate={navigate} />;
+  }
+}
+
+function App() {
+  const languageValue = useLanguageProvider();
+  const authValue = useAuthProvider();
+
+  const [route, setRoute] = useState(getRoute());
+
+  useEffect(() => {
+    const handler = () => setRoute(getRoute());
+    window.addEventListener('hashchange', handler);
+    return () => window.removeEventListener('hashchange', handler);
+  }, []);
+
+  useEffect(() => {
+    window.location.hash = route;
+  }, [route]);
+
+  return (
+    <LanguageContext.Provider value={languageValue}>
+      <AuthContext.Provider value={authValue}>
+        <Router route={route} setRoute={setRoute} />
+      </AuthContext.Provider>
+    </LanguageContext.Provider>
+  );
+}
+
+createRoot(document.getElementById('root')).render(
+  <React.StrictMode>
+    <App />
+  </React.StrictMode>
+);
