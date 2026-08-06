@@ -1,19 +1,27 @@
-import React, { useState, useEffect } from 'react';
+import React, { Suspense, lazy, useEffect, useState } from 'react';
 import { createRoot } from 'react-dom/client';
+import { ArrowLeft, ClipboardCheck, History as HistoryIcon, ShieldCheck } from 'lucide-react';
 import './styles.css';
 import './connections.css';
-import { LanguageContext, useLanguageProvider } from './hooks/useLanguage.js';
+import './focus-home.css';
+import './focus-section.css';
+import { LanguageContext, useLanguageProvider, useLanguage } from './hooks/useLanguage.js';
 import { AuthContext, useAuthProvider } from './hooks/useAuth.js';
-import { Landing } from './pages/Landing.jsx';
-import { Auth } from './pages/Auth.jsx';
-import { ChatApp } from './pages/ChatApp.jsx';
-import { Connections } from './pages/Connections.jsx';
+
+const Landing = lazy(() => import('./pages/Landing.jsx').then(module => ({ default: module.Landing })));
+const Auth = lazy(() => import('./pages/Auth.jsx').then(module => ({ default: module.Auth })));
+const Home = lazy(() => import('./pages/Home.jsx').then(module => ({ default: module.Home })));
+const ChatApp = lazy(() => import('./pages/ChatApp.jsx').then(module => ({ default: module.ChatApp })));
+const Connections = lazy(() => import('./pages/Connections.jsx').then(module => ({ default: module.Connections })));
 
 function getRoute() {
   const hash = window.location.hash.replace('#', '') || '/';
   if (hash === '/auth' || hash === '/auth/') return '/auth';
   if (hash.startsWith('/app/connections')) return '/app/connections';
-  if (hash.startsWith('/app')) return '/app';
+  if (hash.startsWith('/app/approvals')) return '/app/approvals';
+  if (hash.startsWith('/app/history')) return '/app/history';
+  if (hash.startsWith('/app/chat')) return '/app/chat';
+  if (hash === '/app' || hash === '/app/') return '/app';
   if (hash === '/privacy') return '/privacy';
   if (hash === '/status') return '/status';
   return '/';
@@ -21,6 +29,10 @@ function getRoute() {
 
 function navigate(route) {
   window.location.hash = route;
+}
+
+function LoadingRoute() {
+  return <div className="route-loading" role="status">Loading Fanni…</div>;
 }
 
 function Privacy() {
@@ -82,13 +94,56 @@ function Status() {
   );
 }
 
+function FocusSection({ type, onNavigate }) {
+  const { lang } = useLanguage();
+  const isApprovals = type === 'approvals';
+  const copy = isApprovals
+    ? {
+        title: lang === 'en' ? 'Approvals' : 'Aprobaciones',
+        intro: lang === 'en'
+          ? 'Anything Fanni wants to send, publish, delete, or change appears here before it happens.'
+          : 'Todo lo que Fanni quiera enviar, publicar, borrar o cambiar aparece aquí antes de que ocurra.',
+        empty: lang === 'en' ? 'No approvals are waiting.' : 'No hay aprobaciones pendientes.'
+      }
+    : {
+        title: lang === 'en' ? 'History' : 'Historial',
+        intro: lang === 'en'
+          ? 'Finished work, evidence, and saved return points will appear here.'
+          : 'El trabajo terminado, la evidencia y los puntos de retorno guardados aparecerán aquí.',
+        empty: lang === 'en' ? 'No finished work has been recorded yet.' : 'Todavía no hay trabajo terminado registrado.'
+      };
+  const Icon = isApprovals ? ClipboardCheck : HistoryIcon;
+
+  return (
+    <div className="focus-section-page">
+      <header>
+        <button onClick={() => onNavigate('/app')}><ArrowLeft size={17} /> {lang === 'en' ? 'Home' : 'Inicio'}</button>
+        <strong>FANNI</strong>
+      </header>
+      <main>
+        <Icon size={30} />
+        <h1>{copy.title}</h1>
+        <p>{copy.intro}</p>
+        <div className="focus-section-empty">
+          <ShieldCheck size={22} />
+          <strong>{copy.empty}</strong>
+          <span>{lang === 'en' ? 'Fanni will show the client, account, exact change, and saved return point.' : 'Fanni mostrará el cliente, la cuenta, el cambio exacto y el punto de retorno guardado.'}</span>
+        </div>
+      </main>
+    </div>
+  );
+}
+
 function Router({ route, setRoute }) {
-  const nav = (r) => setRoute(r);
+  const nav = (nextRoute) => setRoute(nextRoute);
 
   switch (route) {
     case '/auth': return <Auth onNavigate={nav} onAuthenticated={() => setRoute('/app')} />;
     case '/app/connections': return <Connections onNavigate={nav} />;
-    case '/app': return <ChatApp onNavigate={nav} />;
+    case '/app/approvals': return <FocusSection type="approvals" onNavigate={nav} />;
+    case '/app/history': return <FocusSection type="history" onNavigate={nav} />;
+    case '/app/chat': return <ChatApp onNavigate={nav} />;
+    case '/app': return <Home onNavigate={nav} />;
     case '/privacy': return <Privacy />;
     case '/status': return <Status />;
     default: return <Landing onNavigate={nav} />;
@@ -113,7 +168,9 @@ function App() {
   return (
     <LanguageContext.Provider value={languageValue}>
       <AuthContext.Provider value={authValue}>
-        <Router route={route} setRoute={setRoute} />
+        <Suspense fallback={<LoadingRoute />}>
+          <Router route={route} setRoute={setRoute} />
+        </Suspense>
       </AuthContext.Provider>
     </LanguageContext.Provider>
   );
