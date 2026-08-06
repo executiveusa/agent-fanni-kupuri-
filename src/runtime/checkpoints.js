@@ -1,3 +1,7 @@
+/**
+ * Checkpoint system — localStorage primary, Supabase durable secondary.
+ * Supabase writes are fire-and-forget to avoid blocking the UI.
+ */
 const STORAGE_KEY = 'fanni.checkpoints.v1';
 
 function readStore() {
@@ -7,6 +11,36 @@ function readStore() {
 
 function writeStore(items) {
   if (typeof localStorage !== 'undefined') localStorage.setItem(STORAGE_KEY, JSON.stringify(items));
+}
+
+function getSupabaseClient() {
+  if (typeof window === 'undefined') return null;
+  try {
+    const url = import.meta?.env?.VITE_SUPABASE_URL;
+    const key = import.meta?.env?.VITE_SUPABASE_PUBLISHABLE_KEY;
+    if (!url || !key) return null;
+    // Lazy import to avoid bundling issues in non-browser contexts
+    return window.__fanniSupabase || null;
+  } catch { return null; }
+}
+
+async function persistCheckpointToSupabase(checkpoint) {
+  const client = getSupabaseClient();
+  if (!client) return;
+  try {
+    await client.from('fanni.checkpoints').upsert({
+      id: checkpoint.id,
+      workspace_id: checkpoint.workspaceId,
+      workflow_key: checkpoint.workflowKey,
+      stage_key: checkpoint.stageKey,
+      reason: checkpoint.reason,
+      state: checkpoint.state,
+      verified: checkpoint.verified,
+      created_at: checkpoint.createdAt,
+    });
+  } catch {
+    // Non-blocking — local store is source of truth for this session
+  }
 }
 
 export function createCheckpoint({ workspaceId, workflowKey, stageKey, state, reason = 'stage boundary' }) {
@@ -24,6 +58,7 @@ export function createCheckpoint({ workspaceId, workflowKey, stageKey, state, re
   const store = readStore();
   store.push(checkpoint);
   writeStore(store.slice(-100));
+  persistCheckpointToSupabase(checkpoint); // fire-and-forget durable write
   return checkpoint;
 }
 
@@ -42,6 +77,12 @@ export function restoreCheckpoint({ checkpointId, currentWorkspaceId, currentSta
     state: currentState,
     reason: `safety snapshot before restoring ${checkpointId}`
   });
+  persistRollbackEvent({
+    workspaceId: currentWorkspaceId,
+    fromCheckpointId: safety.id,
+    toCheckpointId: target.id,
+    safetyCheckpointId: safety.id,
+  });
   return {
     restoredState: structuredClone(target.state),
     targetCheckpoint: target,
@@ -54,4 +95,20 @@ export function restoreCheckpoint({ checkpointId, currentWorkspaceId, currentSta
       createdAt: new Date().toISOString()
     }
   };
+}
+
+async function persistRollbackEvent({ workspaceId, fromCheckpointId, toCheckpointId, safetyCheckpointId }) {
+  const client = getSupabaseClient();
+  if (!client) return;
+  try {
+    await client.from('fanni.rollback_events').insert({
+      workspace_id: workspaceId,
+      from_checkpoint_id: fromCheckpointId,
+      to_checkpoint_id: toCheckpointId,
+      safety_checkpoint_id: safetyCheckpointId,
+      integrity_verified: true,
+    });
+  } catch {
+    // Non-blocking
+  }
 }

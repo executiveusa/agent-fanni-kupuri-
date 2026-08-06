@@ -7,7 +7,7 @@ function withTimeout(promise, timeoutMs) {
   ]);
 }
 
-export async function routeProvider({ route, adapters, input, onAttempt = () => {} }) {
+export async function routeProvider({ route, adapters, input, onAttempt = /** @param {any} _ctx */ (_ctx) => {} }) {
   if (!route?.primary) throw new Error('provider route missing primary');
   const providers = [route.primary, ...(route.fallbacks || [])];
   const maxRetries = route.max_retries ?? 0;
@@ -33,7 +33,7 @@ export async function routeProvider({ route, adapters, input, onAttempt = () => 
     }
   }
 
-  const failure = new Error('all provider routes failed');
+  const failure = /** @type {Error & { failures: any[] }} */ (new Error('all provider routes failed'));
   failure.failures = errors;
   throw failure;
 }
