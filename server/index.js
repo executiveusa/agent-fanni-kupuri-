@@ -70,6 +70,20 @@ class Router {
 
   handle(req, res) {
     const url = new URL(req.url, `http://localhost`);
+
+    // Shim Express-style methods onto native ServerResponse
+    const eRes = /** @type {any} */ (res);
+    eRes._pendingStatus = 200;
+    eRes.status = (code) => { eRes._pendingStatus = code; return eRes; };
+    eRes.json = (data) => {
+      if (!res.headersSent) res.writeHead(eRes._pendingStatus, { 'Content-Type': 'application/json' });
+      res.end(JSON.stringify(data));
+    };
+    eRes.send = (body) => {
+      if (!res.headersSent) res.writeHead(eRes._pendingStatus);
+      res.end(typeof body === 'string' ? body : JSON.stringify(body));
+    };
+
     const route = this._routes.find(r => r.method === req.method && url.pathname === r.path);
     if (!route) {
       res.writeHead(404, { 'Content-Type': 'application/json' });
@@ -84,7 +98,7 @@ class Router {
         return;
       }
       const handler = route.handlers[i++];
-      if (handler) handler(req, res, next);
+      if (handler) handler(req, eRes, next);
     };
     next();
   }
