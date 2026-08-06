@@ -81,7 +81,8 @@ class Router {
     };
     eRes.send = (body) => {
       if (!res.headersSent) res.writeHead(eRes._pendingStatus);
-      res.end(typeof body === 'string' ? body : JSON.stringify(body));
+      if (Buffer.isBuffer(body)) res.end(body);
+      else res.end(typeof body === 'string' ? body : JSON.stringify(body));
     };
 
     const route = this._routes.find(r => r.method === req.method && url.pathname === r.path);
