@@ -1,6 +1,7 @@
 import React, { useState, useEffect } from 'react';
 import { createRoot } from 'react-dom/client';
 import './styles.css';
+import './connections.css';
 import { LanguageContext, useLanguageProvider } from './hooks/useLanguage.js';
 import { AuthContext, useAuthProvider } from './hooks/useAuth.js';
 import { Landing } from './pages/Landing.jsx';
