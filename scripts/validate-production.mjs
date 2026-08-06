@@ -75,7 +75,7 @@ if (!signalPolicy.trend_answers?.require_coverage_ledger) throw new Error('trend
 if (signalPolicy.sources?.worldmonitor?.commercial_code_use_without_license !== false) throw new Error('World Monitor commercial code use must remain disabled without a license');
 if (!signalPolicy.external_actions?.require_checkpoint) throw new Error('signal actions require checkpoints');
 if (!signalPolicy.payments?.provider_neutral_entitlements) throw new Error('billing entitlements must remain provider-neutral');
-if (signalPolicy.signal_commons?.enabled_by_default === true) throw new Error('Signal Commons cannot be enabled by default');
+if (signalPolicy.privacy?.signal_commons?.enabled_by_default !== false) throw new Error('Signal Commons cannot be enabled by default');
 
 const models = YAML.parse(await fs.readFile(path.join(root, 'production/models.yaml'), 'utf8'));
 for (const route of ['classification', 'synthesis', 'report', 'speech_to_text', 'text_to_speech']) {
