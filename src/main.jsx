@@ -1,4 +1,4 @@
-import React, { useState, useEffect, useMemo } from 'react';
+import React, { useState, useEffect } from 'react';
 import { createRoot } from 'react-dom/client';
 import './styles.css';
 import { LanguageContext, useLanguageProvider } from './hooks/useLanguage.js';
@@ -6,10 +6,6 @@ import { AuthContext, useAuthProvider } from './hooks/useAuth.js';
 import { Landing } from './pages/Landing.jsx';
 import { Auth } from './pages/Auth.jsx';
 import { ChatApp } from './pages/ChatApp.jsx';
-import { syntheticMentions } from './runtime/syntheticMentions';
-import { reportToMarkdown, runMediaIntelligenceWorkflow, workflowStages } from './runtime/workflowEngine';
-import { runHeartbeat } from './runtime/heartbeat';
-import { persistHeartbeat, persistWorkflowRun, persistenceConfigured } from './runtime/persistence';
 
 function getRoute() {
   const hash = window.location.hash.replace('#', '') || '/';
