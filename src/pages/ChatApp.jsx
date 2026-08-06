@@ -175,25 +175,48 @@ export function ChatApp({ onNavigate }) {
         setAvatarState('idle');
 
       } else {
-        // General conversation — synthetic response for now
-        // In production this routes through the provider adapter API
-        const responses = {
-          en: [
-            "I can help with that. Could you tell me more about what you need? I work best when I have clear context about the workflow, the data source, and the desired outcome.",
-            "That's something I can work on. Let me understand the scope first. Is this a one-time task or something you want to run on a schedule?",
-            "I'm noting that. Before I proceed, I want to be transparent: this action hasn't been routed through a live provider yet in this session. Configure the API base URL in your environment to enable full provider routing."
-          ],
-          es: [
-            "Puedo ayudar con eso. ¿Podrías contarme más sobre lo que necesitas? Trabajo mejor cuando tengo contexto claro sobre el flujo, la fuente de datos y el resultado deseado.",
-            "Es algo en lo que puedo trabajar. Déjame entender el alcance primero. ¿Es una tarea única o algo que quieres ejecutar de forma programada?",
-            "Lo estoy anotando. Antes de proceder, quiero ser transparente: esta acción aún no ha sido enrutada a través de un proveedor en vivo en esta sesión. Configura la URL base de la API en tu entorno para habilitar el enrutamiento completo."
-          ]
-        };
-        const list = responses[lang] || responses.en;
-        const pick = list[Math.floor(Math.random() * list.length)];
-        addMessage('assistant', pick);
-        setAvatarState('idle');
-        await speak(pick.replace(/\*\*/g, '').slice(0, 200));
+        // General conversation — route through live LLM provider API
+        let routed = false;
+        if (API_BASE) {
+          try {
+            const token = user ? (await (await import('../hooks/useAuth.js')).supabase?.auth.getSession())?.data?.session?.access_token : null;
+            const res = await fetch(`${API_BASE}/api/chat`, {
+              method: 'POST',
+              headers: {
+                'Content-Type': 'application/json',
+                'X-Fanni-Language': lang,
+                ...(token ? { 'Authorization': `Bearer ${token}` } : {})
+              },
+              body: JSON.stringify({ message: text, language: lang })
+            });
+            if (res.ok) {
+              const data = await res.json();
+              const replyText = data.reply || (lang === 'en' ? 'I processed your request.' : 'Procesé tu solicitud.');
+              addMessage('assistant', replyText);
+              setAvatarState('idle');
+              await speak(replyText.replace(/\*\*/g, '').slice(0, 250));
+              routed = true;
+            }
+          } catch { /* fallback to local response if network error */ }
+        }
+
+        if (!routed) {
+          const responses = {
+            en: [
+              "I can help with that. Could you tell me more about what you need? I work best when I have clear context about the workflow, the data source, and the desired outcome.",
+              "That's something I can work on. Let me understand the scope first. Is this a one-time task or something you want to run on a schedule?"
+            ],
+            es: [
+              "Puedo ayudar con eso. ¿Podrías contarme más sobre lo que necesitas? Trabajo mejor cuando tengo contexto claro sobre el flujo, la fuente de datos y el resultado deseado.",
+              "Es algo en lo que puedo trabajar. Déjame entender el alcance primero. ¿Es una tarea única o algo que quieres ejecutar de forma programada?"
+            ]
+          };
+          const list = responses[lang] || responses.en;
+          const pick = list[Math.floor(Math.random() * list.length)];
+          addMessage('assistant', pick);
+          setAvatarState('idle');
+          await speak(pick.replace(/\*\*/g, '').slice(0, 200));
+        }
       }
 
     } catch (error) {

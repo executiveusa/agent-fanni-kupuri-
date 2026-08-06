@@ -4,7 +4,9 @@ export function healthRouter(router, { startedAt, version }) {
       openai: Boolean(process.env.OPENAI_API_KEY),
       deepseek: Boolean(process.env.DEEPSEEK_API_KEY),
       groq: Boolean(process.env.GROQ_API_KEY),
-      cohere: Boolean(process.env.COHERE_API_KEY || process.env.COMMAND_R_API_KEY),
+      cohere: Boolean(process.env.COHERE_API_KEY || process.env.COMMAND_R_API_KEY || process.env.COMMAND_CODE_API),
+      anthropic: Boolean(process.env.ANTHROPIC_API_KEY),
+      openrouter: Boolean(process.env.OPEN_ROUTER_API || process.env.OPENROUTER_API_KEY),
       elevenlabs: Boolean(process.env.ELEVENLABS_API_KEY && process.env.ELEVENLABS_VOICE_ID),
       fal: Boolean(process.env.FAL_KEY),
       qvac: Boolean(process.env.QVAC_BASE_URL)

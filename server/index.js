@@ -1,11 +1,20 @@
 import { createServer } from 'node:http';
 import { readFileSync } from 'node:fs';
+import 'dotenv/config';
 import { createElevenLabsTTSAdapter, createElevenLabsSTTAdapter } from './adapters/elevenlabs.js';
 import { createFalSTTAdapter, createFalTTSAdapter } from './adapters/fal.js';
+import { createOpenAIAdapter, createQvacAdapter } from './adapters/openai.js';
+import { createDeepSeekAdapter } from './adapters/deepseek.js';
+import { createGroqAdapter } from './adapters/groq.js';
+import { createCohereAdapter } from './adapters/cohere.js';
+import { createAnthropicAdapter } from './adapters/anthropic.js';
+import { createOpenRouterAdapter } from './adapters/openrouter.js';
+
 import { requireAuth, resolveWorkspace } from './middleware/supabaseAuth.js';
 import { healthRouter } from './routes/health.js';
 import { voiceRouter } from './routes/voice.js';
 import { workflowRouter } from './routes/workflow.js';
+import { chatRouter } from './routes/chat.js';
 
 const PORT = parseInt(process.env.PORT || '3001', 10);
 const startedAt = new Date().toISOString();
@@ -20,7 +29,9 @@ try {
 function buildAdapters() {
   const sttAdapters = {};
   const ttsAdapters = {};
+  const llmAdapters = {};
 
+  // STT / TTS Adapters
   if (process.env.FAL_KEY) {
     sttAdapters.fal = createFalSTTAdapter({ apiKey: process.env.FAL_KEY });
     ttsAdapters.fal = createFalTTSAdapter({ apiKey: process.env.FAL_KEY });
@@ -39,6 +50,31 @@ function buildAdapters() {
     }
   }
 
+  // LLM Adapters
+  if (process.env.DEEPSEEK_API_KEY) {
+    llmAdapters.deepseek = createDeepSeekAdapter(process.env.DEEPSEEK_API_KEY, process.env.DEEPSEEK_MODEL || 'deepseek-chat');
+  }
+  if (process.env.GROQ_API_KEY) {
+    llmAdapters.groq = createGroqAdapter(process.env.GROQ_API_KEY, process.env.GROQ_MODEL || 'llama-3.3-70b-versatile');
+  }
+  if (process.env.OPENAI_API_KEY) {
+    llmAdapters.openai = createOpenAIAdapter(process.env.OPENAI_API_KEY);
+  }
+  const cohereKey = process.env.COHERE_API_KEY || process.env.COMMAND_R_API_KEY || process.env.COMMAND_CODE_API;
+  if (cohereKey) {
+    llmAdapters.cohere = createCohereAdapter(cohereKey, process.env.COHERE_MODEL || 'command-r-plus');
+  }
+  if (process.env.ANTHROPIC_API_KEY) {
+    llmAdapters.anthropic = createAnthropicAdapter(process.env.ANTHROPIC_API_KEY);
+  }
+  const openrouterKey = process.env.OPEN_ROUTER_API || process.env.OPENROUTER_API_KEY;
+  if (openrouterKey) {
+    llmAdapters.openrouter = createOpenRouterAdapter(openrouterKey);
+  }
+  if (process.env.QVAC_BASE_URL) {
+    llmAdapters.qvac = createQvacAdapter(process.env.QVAC_BASE_URL, process.env.QVAC_MODEL);
+  }
+
   const sttRoute = {
     primary: { provider: process.env.FAL_KEY ? 'fal' : 'elevenlabs' },
     fallbacks: process.env.FAL_KEY && process.env.ELEVENLABS_API_KEY ? [{ provider: 'elevenlabs' }] : [],
@@ -54,10 +90,20 @@ function buildAdapters() {
     max_retries: parseInt(process.env.FANNI_MAX_PROVIDER_RETRIES || '2', 10)
   };
 
-  return { sttAdapters, ttsAdapters, sttRoute, ttsRoute };
+  const llmPriority = ['deepseek', 'groq', 'openai', 'cohere', 'anthropic', 'openrouter', 'qvac'];
+  const availableLlmProviders = llmPriority.filter(p => Boolean(llmAdapters[p]));
+  
+  const llmRoute = {
+    primary: availableLlmProviders[0] ? { provider: availableLlmProviders[0] } : null,
+    fallbacks: availableLlmProviders.slice(1).map(p => ({ provider: p })),
+    timeout_ms: parseInt(process.env.FANNI_PROVIDER_TIMEOUT_MS || '60000', 10),
+    max_retries: parseInt(process.env.FANNI_MAX_PROVIDER_RETRIES || '2', 10)
+  };
+
+  return { sttAdapters, ttsAdapters, llmAdapters, sttRoute, ttsRoute, llmRoute };
 }
 
-const { sttAdapters, ttsAdapters, sttRoute, ttsRoute } = buildAdapters();
+const { sttAdapters, ttsAdapters, llmAdapters, sttRoute, ttsRoute, llmRoute } = buildAdapters();
 
 // ── Minimal request router ───────────────────────────────────────────────
 class Router {
@@ -71,7 +117,6 @@ class Router {
   handle(req, res) {
     const url = new URL(req.url, `http://localhost`);
 
-    // Shim Express-style methods onto native ServerResponse
     const eRes = /** @type {any} */ (res);
     eRes._pendingStatus = 200;
     eRes.status = (code) => { eRes._pendingStatus = code; return eRes; };
@@ -85,7 +130,7 @@ class Router {
       else res.end(typeof body === 'string' ? body : JSON.stringify(body));
     };
 
-    const route = this._routes.find(r => r.method === req.method && url.pathname === r.path);
+    const route = this._routes.find(r => r.method === req.method && (url.pathname === r.path || url.pathname === `/api${r.path}`));
     if (!route) {
       res.writeHead(404, { 'Content-Type': 'application/json' });
       res.end(JSON.stringify({ error: 'Not found' }));
@@ -131,6 +176,7 @@ const router = new Router();
 healthRouter(router, { startedAt, version });
 voiceRouter(router, { requireAuth, resolveWorkspace, sttAdapters, ttsAdapters, sttRoute, ttsRoute });
 workflowRouter(router, { requireAuth, resolveWorkspace });
+chatRouter(router, { requireAuth, resolveWorkspace, llmAdapters, llmRoute });
 
 const server = createServer(async (req, res) => {
   const extReq = /** @type {import('http').IncomingMessage & { body?: any }} */ (req);
@@ -152,7 +198,8 @@ const server = createServer(async (req, res) => {
 
 server.listen(PORT, () => {
   console.log(`[fanni-server] Agent Fanni runtime · port ${PORT} · v${version}`);
-  console.log(`[fanni-server] Supabase: ${process.env.SUPABASE_URL ? 'configured' : 'NOT configured (server cannot authenticate)'}`);
+  console.log(`[fanni-server] Supabase: ${process.env.SUPABASE_URL ? 'configured' : 'NOT configured'}`);
+  console.log(`[fanni-server] Primary LLM: ${llmRoute.primary?.provider || 'none'}`);
   console.log(`[fanni-server] External writes: ${process.env.FANNI_ALLOW_EXTERNAL_WRITES === 'true' ? 'ENABLED' : 'blocked'}`);
 });
 

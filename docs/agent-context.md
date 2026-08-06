@@ -1,33 +1,34 @@
-# Agent Fanni — System Context Memory
+# Agent Fanni Kupuri — Agent Context Memory
 
 ## Repository Purpose
-Agent Fanni (Kupuri Media) is a sovereign media-intelligence AI agent web app featuring deterministic workflow execution, an executable heartbeat, multi-provider API integrations, and Spanish (Mexican Spanish primary) / English i18n support.
+Sovereign AI media intelligence & operations agent platform for Kupuri Media. Integrates multi-provider LLMs, native Mexican Spanish voice synthesis (ElevenLabs), 3D Mexican female lip-sync avatar, Supabase RLS isolation, and 8-stage media intelligence pipelines.
 
-## Stack
-- **Frontend**: React + Vite, Vanilla CSS design system
-- **Backend/Sidecar**: Node.js / Express API (`/server`), Supabase client (`/src/runtime/persistence.ts` / `persistence.js`)
-- **Indexing & Tools**: jCodeMunch MCP registered and active
-- **i18n**: Native Mexican Spanish (es-MX) default + English (en) context and translations
+## Tech Stack
+- **Frontend**: React 19 + Vite (port 5173 / 4173), Lucide icons, native WebAudio & canvas lip-sync waveforms.
+- **Backend / Sidecar**: Node.js custom HTTP router (port 3001), multi-provider LLM failover router, ElevenLabs & Fal STT/TTS adapters.
+- **Agent Shell Submodule**: `space-agent` (`caec19a9` checked out at `space-agent/`).
+- **Database**: Supabase PostgreSQL (`fanni` schema) with RLS policies, audit logs, and workspace isolation.
 
-## API Connections & Adapters
-1. **OpenAI**: Classification (`gpt-4o-mini`), Synthesis & Reports (`gpt-4o`)
-2. **DeepSeek**: Reasoner & Chat (`deepseek-chat`)
-3. **Groq**: Llama 3.3 70B Versatile fast inference (`llama-3.3-70b-versatile`)
-4. **Command R / Cohere**: Structured retrieval and grounded generation (`command-r-plus`)
-5. **ElevenLabs**: TTS Voice pipeline (`eleven_multilingual_v2`, voice synthesis)
-6. **Supabase**: Persistent evidence and heartbeat logging (`cyxdevcjycmffhmwxojh`)
-7. **QVAC / FAL**: Local/external media generation fallback hooks
+## Configured API Providers (Vault Key Matrix)
+- **OpenAI**: `sk-proj-...` (`OPENAI_API_KEY`, `gpt-4o`, `gpt-4o-mini`)
+- **DeepSeek**: `sk-4ed09af1...` (`DEEPSEEK_API_KEY`, `deepseek-chat`) — Primary LLM
+- **Groq**: `gsk_2FDF1V3x...` (`GROQ_API_KEY`, `llama-3.3-70b-versatile`)
+- **Cohere / Command Code**: `user_3TtvqWd...` (`COHERE_API_KEY`, `COMMAND_R_API_KEY`, `COMMAND_CODE_API`, `command-r-plus`)
+- **Anthropic**: `sk-ant-api03-...` (`ANTHROPIC_API_KEY`, `claude-3-5-sonnet`)
+- **OpenRouter**: `sk-or-v1-...` (`OPEN_ROUTER_API`, `OPENROUTER_API_KEY`)
+- **ElevenLabs**: `sk_255591c8...` (`ELEVENLABS_API_KEY`, Voice ID `21m00Tcm4TlvDq8ikWAM`, `eleven_multilingual_v2`)
+- **Fal AI**: `9f7a5a93...` (`FAL_KEY`)
+- **Supabase**: `https://kbphngxqozmpfrbdzgca.supabase.co` (`SUPABASE_SERVICE_ROLE_KEY`, `VITE_SUPABASE_ANON_KEY`)
 
-## 3D Lip-Sync Female Avatar Pipeline
-- **Recommended 3D Model**: Sexy Spanish Female Avatar supporting Viseme Lip-Sync (WebGL / Ready Player Me / Three.js canvas setup).
-- **Audio-Driven Lipsync**: Viseme morph target mapping for ElevenLabs real-time audio streams.
-- **Current State**: UI avatar container preserved using stylized visual card until live 3D GLTF canvas container is activated in the next step.
+## Key Endpoints Tested & Verified
+- `GET /health` & `GET /api/health` — Returns `status: ok`, `supabaseConfigured: true`, and all 8 provider statuses (`openai`, `deepseek`, `groq`, `cohere`, `anthropic`, `openrouter`, `elevenlabs`, `fal`).
+- `POST /api/chat` — Live LLM chat completion routed to DeepSeek in native Mexican Spanish.
+- `POST /api/voice/synthesize` — Live ElevenLabs speech synthesis returning 24,898 bytes MP3 audio.
+- `POST /api/workflow/run` — 8-stage media intelligence pipeline execution returning report, metrics, and heartbeat.
 
-## Recent Changes & Squash Merge Verification
-- All commits from PR #10 have been squashed into a single clean commit on `main`: `7527e40` (`feat: consolidate PR #10 persistence, heartbeat, multi-provider APIs and runtime state updates`).
-- Verified zero test regressions (`npm test` — 19/19 passing).
-
-## Verification Commands
-- `npm test`
-- `npm run build`
-- `git status`
+## Commands
+- Dev Server: `npm run dev`
+- Sidecar Server: `node server/index.js`
+- Full Validation: `npm run check`
+- Unit Tests: `npm test`
+- Build: `npm run build`
