@@ -1,0 +1,89 @@
+policy:
+  name: kupuri-social-operations
+  version: 1
+  provider: zernio
+  tenant_boundary: one_zernio_profile_per_fanni_workspace
+  external_writes_default: false
+  real_client_data_default: false
+
+roles:
+  owner: [connect_accounts, approve, publish, delete, manage_keys, manage_webhooks]
+  admin: [connect_accounts, approve, publish, moderate, analytics]
+  operator: [draft, schedule_after_approval, analytics, inbox_triage]
+  reviewer: [review, request_changes, approve]
+  viewer: [read]
+
+actions:
+  draft_post:
+    approval: none
+    checkpoint_before: false
+  schedule_post:
+    approval: required_unless_preapproved_campaign
+    checkpoint_before: true
+    idempotency_required: true
+  publish_now:
+    approval: always
+    checkpoint_before: true
+    idempotency_required: true
+  reply_comment:
+    approval: required_for_sensitive_or_first_contact
+    checkpoint_before: true
+  reply_dm:
+    approval: required_for_sales_legal_financial_or_sensitive
+    checkpoint_before: true
+  hide_comment:
+    approval: always
+    checkpoint_before: true
+  delete_comment:
+    approval: always
+    checkpoint_before: true
+  create_ad:
+    approval: always
+    checkpoint_before: true
+    budget_cap_required: true
+  connect_account:
+    approval: always
+  rotate_key:
+    approval: owner_only
+
+content_rules:
+  never_invent:
+    - testimonials
+    - customer_results
+    - prices
+    - awards
+    - partnerships
+    - event_details
+  require_source_for:
+    - statistics
+    - dates
+    - offers
+    - legal_claims
+    - health_claims
+  bilingual:
+    preserve_brand_voice: true
+    do_not_literal_translate: true
+    human_review_for_sensitive_copy: true
+  platform_adaptation:
+    enabled: true
+    preserve_core_claim: true
+    respect_platform_constraints: true
+
+workflow_controls:
+  max_publish_attempts: 3
+  retry_backoff_seconds: [2, 10, 60]
+  webhook_dedup_key: event_id
+  publish_idempotency_key: work_item_id
+  reconcile_after_minutes: 15
+  analytics_sync_hours: 24
+  inbox_sync_minutes: 15
+  failed_account_alert_threshold: 1
+
+client_isolation:
+  require_workspace_id: true
+  require_organization_id: true
+  require_zernio_profile_id: true
+  deny_cross_workspace_account_ids: true
+  scoped_keys_recommended: true
+  store_api_keys_in_database: false
+  export_client_data_independently: true
