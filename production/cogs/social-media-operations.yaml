@@ -1,8 +1,10 @@
 cog:
   name: SocialMediaOperations
   description: Multi-client Kupuri Media social publishing, engagement, analytics, and reconciliation through Zernio.
-  max_total_visits: 24
   chat_memory_enabled: false
+
+resilience:
+  max_total_visits: 24
 
 agents:
   - id: resolve_client
@@ -51,7 +53,7 @@ agents:
     tool: zernio.reply
   - id: report
     type: reasoning
-    model_route: reports
+    model_route: report
   - id: rollback
     type: deterministic
 
@@ -78,14 +80,16 @@ flow:
     create_content: adapt_platforms
     adapt_platforms: policy_check
     policy_check:
-      route:
+      decision_key: route
+      choices:
         pass: approval_gate
         revise: create_content
         block: report
       fallback: report
       max_visits: 3
     approval_gate:
-      route:
+      decision_key: route
+      choices:
         approved: checkpoint
         changes_requested: create_content
         rejected: report
@@ -94,14 +98,16 @@ flow:
       max_visits: 3
     checkpoint: publish
     publish:
-      route:
+      decision_key: route
+      choices:
         accepted: reconcile
         retryable_failure: publish
         permanent_failure: rollback
       fallback: rollback
       max_visits: 3
     reconcile:
-      route:
+      decision_key: route
+      choices:
         published: measure
         scheduled: measure
         partial_failure: report
@@ -111,14 +117,16 @@ flow:
     measure: learn
     learn: inbox_triage
     inbox_triage:
-      route:
+      decision_key: route
+      choices:
         needs_reply: prepare_replies
         no_action: report
         escalation: report
       fallback: report
     prepare_replies: reply_approval
     reply_approval:
-      route:
+      decision_key: route
+      choices:
         approved: send_replies
         awaiting_approval: report
         rejected: report
