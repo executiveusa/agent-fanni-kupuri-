@@ -1,15 +1,18 @@
 import React, { useState, useEffect } from 'react';
 import { createRoot } from 'react-dom/client';
 import './styles.css';
+import './connections.css';
 import { LanguageContext, useLanguageProvider } from './hooks/useLanguage.js';
 import { AuthContext, useAuthProvider } from './hooks/useAuth.js';
 import { Landing } from './pages/Landing.jsx';
 import { Auth } from './pages/Auth.jsx';
 import { ChatApp } from './pages/ChatApp.jsx';
+import { Connections } from './pages/Connections.jsx';
 
 function getRoute() {
   const hash = window.location.hash.replace('#', '') || '/';
   if (hash === '/auth' || hash === '/auth/') return '/auth';
+  if (hash.startsWith('/app/connections')) return '/app/connections';
   if (hash.startsWith('/app')) return '/app';
   if (hash === '/privacy') return '/privacy';
   if (hash === '/status') return '/status';
@@ -84,6 +87,7 @@ function Router({ route, setRoute }) {
 
   switch (route) {
     case '/auth': return <Auth onNavigate={nav} onAuthenticated={() => setRoute('/app')} />;
+    case '/app/connections': return <Connections onNavigate={nav} />;
     case '/app': return <ChatApp onNavigate={nav} />;
     case '/privacy': return <Privacy />;
     case '/status': return <Status />;
@@ -94,7 +98,6 @@ function Router({ route, setRoute }) {
 function App() {
   const languageValue = useLanguageProvider();
   const authValue = useAuthProvider();
-
   const [route, setRoute] = useState(getRoute());
 
   useEffect(() => {

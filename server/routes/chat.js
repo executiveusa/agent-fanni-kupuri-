@@ -1,10 +1,13 @@
 import { routeProvider } from '../../src/runtime/providerRouter.js';
+import { composioRouter } from './composio.js';
 
-const SYSTEM_PROMPT_ES = `Eres Fanni (de Kupuri Media), una agente de IA de inteligencia de medios soberana y automatización de operaciones. Tu estilo de comunicación es ejecutivo, preciso, profesional y cálido. Respondes en español mexicano fluido y natural por defecto. Tienes acceso a herramientas de análisis de medios, latido del sistema (heartbeat), puntos de control y gestión de evidencia. Mantén tus respuestas concisas, estructuradas y enfocadas en la ejecución de tareas.`;
+const SYSTEM_PROMPT_ES = `Eres Fanni (de Kupuri Media), una supersecretaria soberana que organiza contexto, conecta aplicaciones con permiso y convierte pedidos en trabajo verificable. Tu estilo es ejecutivo, preciso, profesional, cálido y fácil de entender para personas no técnicas. Respondes en español mexicano fluido y natural por defecto. Siempre dices qué vas a hacer, para qué cliente, con qué cuenta y si necesitas aprobación. Nunca ocultas una acción externa detrás de lenguaje técnico.`;
 
-const SYSTEM_PROMPT_EN = `You are Agent Fanni (by Kupuri Media), a sovereign media-intelligence and operations automation AI agent. Your communication style is executive, precise, professional, and warm. You communicate natively in English when requested, defaulting to Mexican Spanish. You have access to media analysis tools, system heartbeat, checkpoints, and evidence management. Keep your responses concise, structured, and focused on task execution.`;
+const SYSTEM_PROMPT_EN = `You are Agent Fanni by Kupuri Media, a sovereign super-secretary who organizes context, connects approved apps, and turns requests into verifiable work. Your style is executive, precise, professional, warm, and easy for nontechnical people to understand. Always state what you will do, which client and account are in scope, and whether approval is required. Never hide an external action behind technical language.`;
 
 export function chatRouter(router, { requireAuth, resolveWorkspace, llmAdapters, llmRoute }) {
+  composioRouter(router, { requireAuth, resolveWorkspace });
+
   router.post('/chat', requireAuth, resolveWorkspace, async (req, res) => {
     try {
       const { message, messages: history, language = 'es', provider: preferredProvider } = req.body || {};
@@ -15,9 +18,7 @@ export function chatRouter(router, { requireAuth, resolveWorkspace, llmAdapters,
       }
 
       const systemPrompt = language === 'en' ? SYSTEM_PROMPT_EN : SYSTEM_PROMPT_ES;
-      const formattedMessages = [
-        { role: 'system', content: systemPrompt }
-      ];
+      const formattedMessages = [{ role: 'system', content: systemPrompt }];
 
       if (Array.isArray(history) && history.length > 0) {
         for (const m of history) {
@@ -51,7 +52,6 @@ export function chatRouter(router, { requireAuth, resolveWorkspace, llmAdapters,
         estimatedCostUsd: result.output.estimatedCostUsd,
         workspaceId: req.workspace?.id
       });
-
     } catch (error) {
       console.error('[chat]', error.message);
       res.status(502).json({
@@ -64,8 +64,6 @@ export function chatRouter(router, { requireAuth, resolveWorkspace, llmAdapters,
   router.post('/v1/chat/completions', requireAuth, resolveWorkspace, async (req, res) => {
     try {
       const { messages, model, temperature } = req.body || {};
-      const lastUserMsg = Array.isArray(messages) ? [...messages].reverse().find(m => m.role === 'user')?.content : '';
-
       if (!messages || !messages.length) {
         return res.status(400).json({ error: { message: 'messages array is required', type: 'invalid_request_error' } });
       }
@@ -86,13 +84,7 @@ export function chatRouter(router, { requireAuth, resolveWorkspace, llmAdapters,
         object: 'chat.completion',
         created: Math.floor(Date.now() / 1000),
         model: model || result.provider,
-        choices: [
-          {
-            index: 0,
-            message: { role: 'assistant', content: result.output.text },
-            finish_reason: 'stop'
-          }
-        ],
+        choices: [{ index: 0, message: { role: 'assistant', content: result.output.text }, finish_reason: 'stop' }],
         usage: {
           prompt_tokens: result.output.inputTokens || 0,
           completion_tokens: result.output.outputTokens || 0,
