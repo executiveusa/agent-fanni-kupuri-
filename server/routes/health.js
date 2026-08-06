@@ -2,6 +2,9 @@ export function healthRouter(router, { startedAt, version }) {
   router.get('/health', (_req, res) => {
     const providers = {
       openai: Boolean(process.env.OPENAI_API_KEY),
+      deepseek: Boolean(process.env.DEEPSEEK_API_KEY),
+      groq: Boolean(process.env.GROQ_API_KEY),
+      cohere: Boolean(process.env.COHERE_API_KEY || process.env.COMMAND_R_API_KEY),
       elevenlabs: Boolean(process.env.ELEVENLABS_API_KEY && process.env.ELEVENLABS_VOICE_ID),
       fal: Boolean(process.env.FAL_KEY),
       qvac: Boolean(process.env.QVAC_BASE_URL)
@@ -25,7 +28,7 @@ export function healthRouter(router, { startedAt, version }) {
       uptime: Math.round((Date.now() - new Date(startedAt).getTime()) / 1000),
       providers,
       safetyGates,
-      supabaseConfigured: Boolean(process.env.SUPABASE_URL && process.env.SUPABASE_SERVICE_ROLE_KEY)
+      supabaseConfigured: Boolean(process.env.SUPABASE_URL && (process.env.SUPABASE_SERVICE_ROLE_KEY || process.env.VITE_SUPABASE_ANON_KEY))
     });
   });
 

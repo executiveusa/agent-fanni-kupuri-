@@ -21,7 +21,6 @@ function navigate(route) {
 }
 
 function Privacy() {
-  React.useContext(LanguageContext);
   return (
     <div className="prose-page">
       <nav className="prose-nav">
@@ -30,7 +29,7 @@ function Privacy() {
         </button>
       </nav>
       <article className="prose">
-        <h1>Privacy Statement</h1>
+        <h1>Privacy Statement / Declaración de Privacidad</h1>
         <p>Agent Fanni by Kupuri Media is designed with privacy as a default, not an option.</p>
         <h2>Data handling</h2>
         <ul>
@@ -64,7 +63,7 @@ function Status() {
         </button>
       </nav>
       <article className="prose">
-        <h1>System Status</h1>
+        <h1>System Status / Estado del Sistema</h1>
         {!API_BASE && <p>API not configured. Status endpoint unavailable.</p>}
         {API_BASE && !health && <p>Loading…</p>}
         {health && (
@@ -81,14 +80,14 @@ function Status() {
 }
 
 function Router({ route, setRoute }) {
-  const navigate = (r) => setRoute(r);
+  const nav = (r) => setRoute(r);
 
   switch (route) {
-    case '/auth': return <Auth onNavigate={navigate} onAuthenticated={() => setRoute('/app')} />;
-    case '/app': return <ChatApp onNavigate={navigate} />;
+    case '/auth': return <Auth onNavigate={nav} onAuthenticated={() => setRoute('/app')} />;
+    case '/app': return <ChatApp onNavigate={nav} />;
     case '/privacy': return <Privacy />;
     case '/status': return <Status />;
-    default: return <Landing onNavigate={navigate} />;
+    default: return <Landing onNavigate={nav} />;
   }
 }
 
