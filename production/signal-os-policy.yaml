@@ -1,0 +1,165 @@
+policy:
+  id: fanni-pulso-signal-os
+  version: 1
+  default_language: auto
+  market_anchor: mexico_first
+  interface_priority:
+    - whatsapp_business
+    - web
+    - enterprise_chat
+    - cli
+  provider_neutral: true
+
+identity:
+  require_organization_id: true
+  require_workspace_id: true
+  require_actor_id: true
+  whatsapp_sender_must_map_to_workspace: true
+  deny_ambiguous_workspace_private_access: true
+  deny_cross_workspace_context: true
+
+sources:
+  allowed_classes:
+    - public
+    - authorized_private
+    - community_opt_in
+    - licensed
+    - synthetic
+  require_source_lineage: true
+  require_observed_at: true
+  require_license_classification: true
+  synthetic_must_be_labeled: true
+  worldmonitor:
+    mode: reference_or_licensed_adapter
+    commercial_code_use_without_license: false
+    production_integration_claim_without_verified_call: false
+
+trend_answers:
+  require_coverage_ledger: true
+  require_refresh_timestamp: true
+  require_geographic_scope: true
+  require_language_scope: true
+  require_blind_spots: true
+  high_confidence_min_independent_source_classes: 2
+  prohibit_unqualified_population_claims: true
+  separate:
+    - fact
+    - allegation
+    - opinion
+    - inference
+    - unknown
+    - contradiction
+
+regional_context:
+  region_packs_versioned: true
+  citations_required: true
+  staleness_expiration_required: true
+  prohibit_stereotype_as_evidence: true
+  local_expert_review_supported: true
+
+privacy:
+  minimize_personal_data: true
+  redact_before_shared_analysis: true
+  raw_private_signal_export: false
+  community_reporter_identity_default: hidden
+  signal_commons:
+    enabled_by_default: false
+    opt_in_required: true
+    raw_data_sharing: false
+    minimum_cohort_required: true
+    sensitive_categories_excluded_by_default: true
+    revocable_consent_required: true
+    privacy_review_before_production: true
+
+external_actions:
+  enabled_by_default: false
+  require_workspace_write_gate: true
+  require_account_ownership: true
+  require_checkpoint: true
+  require_idempotency_key: true
+  require_reconciliation: true
+  require_rollback_or_compensating_action: true
+  always_require_approval:
+    - mass_message
+    - public_post
+    - public_reply
+    - delete
+    - spend
+    - change_permission
+    - modify_customer_record
+    - legal_statement
+    - financial_statement
+    - employment_action
+    - safety_alert
+    - crisis_response
+
+whatsapp:
+  business_accounts_only: true
+  personal_account_automation: false
+  support:
+    - text
+    - voice_note
+    - image
+    - document
+    - location
+    - approval
+    - secure_checkout_link
+    - human_handoff
+  enforce_template_and_session_policy: true
+  never_request_payment_card_data_in_chat: true
+  fallback_channels_required_for_critical_alerts: true
+
+payments:
+  provider_neutral_entitlements: true
+  webhook_signature_required: true
+  webhook_event_deduplication: true
+  grant_access_from_verified_event_only: true
+  revoke_access_from_verified_event_only: true
+  stripe:
+    role: mexico_primary
+    subscriptions: true
+    mxn_bank_transfer_when_eligible: true
+    oxxo_one_time_only: true
+  creem:
+    role: international_merchant_of_record_option
+    subscriptions: true
+    checkout: true
+
+models:
+  provider_lock_in: false
+  interactive_route: fast_qualified
+  deep_analysis_route: high_reasoning_or_council
+  sensitive_private_route: local_when_configured
+  consequential_recommendation_requires_verifier: true
+
+local_cloud:
+  local_mode_supported: true
+  cloud_mode_supported: true
+  hybrid_mode_supported: true
+  local_redaction_before_cloud_supported: true
+  encrypted_local_vault_required_for_private_local_mode: true
+  export_import_required:
+    - skills
+    - watchlists
+    - approved_memory
+    - evidence
+    - region_packs
+
+self_improvement:
+  collect_explicit_feedback: true
+  measure_outcomes: true
+  propose_skill_changes: true
+  silent_production_instruction_rewrite: false
+  human_approval_for_identity_or_policy_change: true
+  eval_required_before_activation: true
+
+release_gates:
+  - three_end_to_end_demos
+  - cross_workspace_tests
+  - evidence_and_coverage_on_every_trend_answer
+  - whatsapp_identity_mapping_proven
+  - billing_entitlement_webhooks_proven
+  - local_export_import_proven
+  - spanish_nontechnical_usability_test
+  - worldmonitor_license_boundary_resolved
+  - measured_pilot_value_exceeds_operating_cost

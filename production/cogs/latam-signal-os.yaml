@@ -1,0 +1,200 @@
+cog:
+  name: LatamSignalOS
+  description: WhatsApp-native, Mexico-first signal intelligence, verification, recommendation, governed action, and outcome learning.
+  chat_memory_enabled: false
+
+resilience:
+  max_total_visits: 32
+
+agents:
+  - id: resolve_identity
+    type: deterministic
+    context: [AGENTS.md, HEART.md, PERSONA.md, HEARTBEAT.md, production/signal-os-policy.yaml]
+  - id: define_question
+    type: reasoning
+    model_route: classification
+  - id: plan_evidence
+    type: reasoning
+    model_route: synthesis
+  - id: collect_signals
+    type: tool
+    tool: signal.collect
+  - id: normalize
+    type: deterministic
+  - id: deduplicate
+    type: deterministic
+  - id: corroborate
+    type: reasoning
+    model_route: classification
+  - id: apply_region_pack
+    type: reasoning
+    model_route: synthesis
+  - id: score_impact
+    type: deterministic
+  - id: coverage_gate
+    type: deterministic
+  - id: recommend
+    type: reasoning
+    model_route: synthesis
+  - id: independent_verifier
+    type: reasoning
+    model_route: classification
+  - id: choose_mode
+    type: deterministic
+  - id: create_watch
+    type: tool
+    tool: signal.watch
+  - id: prepare_draft
+    type: reasoning
+    model_route: synthesis
+  - id: approval_gate
+    type: deterministic
+  - id: checkpoint
+    type: deterministic
+  - id: execute_action
+    type: tool
+    tool: composio.execute
+  - id: reconcile
+    type: deterministic
+  - id: measure
+    type: reasoning
+    model_route: classification
+  - id: propose_learning
+    type: reasoning
+    model_route: synthesis
+  - id: report
+    type: reasoning
+    model_route: report
+  - id: rollback
+    type: deterministic
+
+memory:
+  - id: approved_region_context
+    scope: workspace
+    query_before: [apply_region_pack, recommend]
+    update_after: []
+    query_keys: [workspace_id, region_pack_id, version]
+    update_keys: []
+  - id: signal_history
+    scope: workspace
+    query_before: [corroborate, score_impact]
+    update_after: [reconcile, measure]
+    query_keys: [workspace_id, topic, location_scope, time_window]
+    update_keys: [clusters, coverage, action_receipt, measured_outcome]
+  - id: playbook_learning
+    scope: workspace
+    query_before: [recommend, prepare_draft]
+    update_after: [propose_learning]
+    query_keys: [workspace_id, workflow_key, approved_patterns]
+    update_keys: [proposed_skill_change, eval_case, outcome_class]
+
+flow:
+  start: resolve_identity
+  transitions:
+    resolve_identity:
+      decision_key: route
+      choices:
+        authorized: define_question
+        public_only: define_question
+        ambiguous_private_scope: report
+        denied: report
+      fallback: report
+    define_question: plan_evidence
+    plan_evidence: collect_signals
+    collect_signals:
+      decision_key: route
+      choices:
+        signals_found: normalize
+        partial_sources: normalize
+        no_signals: coverage_gate
+        provider_blocked: coverage_gate
+      fallback: coverage_gate
+    normalize: deduplicate
+    deduplicate: corroborate
+    corroborate: apply_region_pack
+    apply_region_pack: score_impact
+    score_impact: coverage_gate
+    coverage_gate:
+      decision_key: route
+      choices:
+        sufficient: recommend
+        limited: recommend
+        contradictory: recommend
+        unsafe_to_conclude: report
+      fallback: report
+    recommend: independent_verifier
+    independent_verifier:
+      decision_key: route
+      choices:
+        verified: choose_mode
+        revise: recommend
+        block: report
+      fallback: report
+      max_visits: 3
+    choose_mode:
+      decision_key: route
+      choices:
+        answer: report
+        watch: create_watch
+        draft: prepare_draft
+        execute: prepare_draft
+        alert: prepare_draft
+      fallback: report
+    create_watch: report
+    prepare_draft: approval_gate
+    approval_gate:
+      decision_key: route
+      choices:
+        no_external_write: report
+        approved: checkpoint
+        changes_requested: prepare_draft
+        awaiting_approval: report
+        rejected: report
+      fallback: report
+      max_visits: 3
+    checkpoint: execute_action
+    execute_action:
+      decision_key: route
+      choices:
+        accepted: reconcile
+        retryable_failure: execute_action
+        permanent_failure: rollback
+      fallback: rollback
+      max_visits: 3
+    reconcile:
+      decision_key: route
+      choices:
+        verified: measure
+        partial: measure
+        failed: rollback
+        unknown: report
+      fallback: report
+    measure: propose_learning
+    propose_learning: report
+    rollback: report
+    report:
+      end: true
+
+required_output:
+  - organization_id
+  - workspace_id
+  - actor_id
+  - question
+  - time_window
+  - location_scope
+  - facts
+  - inferences
+  - unknowns
+  - contradictions
+  - coverage_ledger
+  - confidence
+  - local_context_version
+  - recommendation
+  - approval_id
+  - checkpoint_id
+  - action_receipt
+  - measured_outcome
+  - commercial_impact
+  - public_benefit
+  - risks
+  - next_action

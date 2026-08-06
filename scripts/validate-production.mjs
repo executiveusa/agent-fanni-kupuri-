@@ -12,12 +12,18 @@ const requiredFiles = [
   'production/agent-manifest.json',
   'production/cogs/media-intelligence-weekly.yaml',
   'production/cogs/social-media-operations.yaml',
+  'production/cogs/latam-signal-os.yaml',
   'production/social-media-policy.yaml',
+  'production/signal-os-policy.yaml',
   'production/models.yaml',
   'production/memory-policy.yaml',
   'production/personas/fanni.yaml',
+  'customware/ext/skills/fanni-pulso/SKILL.md',
+  'docs/FANNI_PULSO_LATAM_SIGNAL_OS.md',
+  'docs/WORLDMONITOR_INTEGRATION_BOUNDARY.md',
   'src/integrations/zernioClient.js',
   'src/runtime/socialMediaWorkflow.js',
+  'src/runtime/fanniPulsoDemo.js',
   'supabase/functions/fanni-zernio-webhook/index.ts'
 ];
 
@@ -30,7 +36,11 @@ if (manifest.agent.id !== 'fanni') throw new Error('production agent id must be 
 if (!manifest.agent.lifecycle.includes('create_checkpoint')) throw new Error('checkpoint lifecycle stage missing');
 if (!manifest.agent.outputContract.rollbackReferenceRequired) throw new Error('rollback reference must be required');
 
-for (const cogPath of ['production/cogs/media-intelligence-weekly.yaml', 'production/cogs/social-media-operations.yaml']) {
+for (const cogPath of [
+  'production/cogs/media-intelligence-weekly.yaml',
+  'production/cogs/social-media-operations.yaml',
+  'production/cogs/latam-signal-os.yaml'
+]) {
   const cog = YAML.parse(await fs.readFile(path.join(root, cogPath), 'utf8'));
   const validation = validateCog(cog);
   if (!validation.valid) throw new Error(`invalid cog ${cogPath}: ${validation.errors.join('; ')}`);
@@ -50,6 +60,22 @@ if (socialPolicy.policy?.external_writes_default !== false) throw new Error('soc
 if (socialPolicy.actions?.publish_now?.approval !== 'always') throw new Error('publish-now must always require approval');
 if (!socialPolicy.client_isolation?.deny_cross_workspace_account_ids) throw new Error('cross-workspace social account IDs must be denied');
 if (socialPolicy.client_isolation?.store_api_keys_in_database !== false) throw new Error('Zernio API keys must not be stored in tenant tables');
+
+const signalCog = YAML.parse(await fs.readFile(path.join(root, 'production/cogs/latam-signal-os.yaml'), 'utf8'));
+const signalAgentIds = new Set(signalCog.agents.map((agent) => agent.id));
+for (const requiredAgent of ['resolve_identity', 'plan_evidence', 'corroborate', 'coverage_gate', 'independent_verifier', 'approval_gate', 'checkpoint', 'execute_action', 'reconcile', 'measure', 'propose_learning']) {
+  if (!signalAgentIds.has(requiredAgent)) throw new Error(`signal cog missing ${requiredAgent}`);
+}
+if (signalCog.flow.transitions.approval_gate?.choices?.approved !== 'checkpoint') throw new Error('approved signal actions must checkpoint before execution');
+if (signalCog.flow.transitions.execute_action?.fallback !== 'rollback') throw new Error('signal action execution must fail closed to rollback');
+
+const signalPolicy = YAML.parse(await fs.readFile(path.join(root, 'production/signal-os-policy.yaml'), 'utf8'));
+if (!signalPolicy.identity?.whatsapp_sender_must_map_to_workspace) throw new Error('WhatsApp sender must map to a workspace');
+if (!signalPolicy.trend_answers?.require_coverage_ledger) throw new Error('trend answers require a coverage ledger');
+if (signalPolicy.sources?.worldmonitor?.commercial_code_use_without_license !== false) throw new Error('World Monitor commercial code use must remain disabled without a license');
+if (!signalPolicy.external_actions?.require_checkpoint) throw new Error('signal actions require checkpoints');
+if (!signalPolicy.payments?.provider_neutral_entitlements) throw new Error('billing entitlements must remain provider-neutral');
+if (signalPolicy.privacy?.signal_commons?.enabled_by_default !== false) throw new Error('Signal Commons cannot be enabled by default');
 
 const models = YAML.parse(await fs.readFile(path.join(root, 'production/models.yaml'), 'utf8'));
 for (const route of ['classification', 'synthesis', 'report', 'speech_to_text', 'text_to_speech']) {

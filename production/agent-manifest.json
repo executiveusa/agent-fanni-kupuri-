@@ -1,5 +1,5 @@
 {
-  "schemaVersion": "1.0",
+  "schemaVersion": "1.1",
   "agent": {
     "id": "fanni",
     "name": "Agent Fanni",
@@ -10,30 +10,74 @@
       "heartbeat": "HEARTBEAT.md",
       "instructions": "AGENTS.md"
     },
+    "productIdentity": {
+      "systemName": "Fanni Pulso",
+      "category": "LATAM Signal Operating System",
+      "marketAnchor": "Mexico first",
+      "avatar": "stylized editorial cartoon octopus",
+      "prohibitFakeHumanAvatar": true
+    },
+    "capabilities": [
+      "workspace_scoped_company_brain",
+      "whatsapp_first_multimodal_intake",
+      "public_and_authorized_signal_listening",
+      "source_lineage_and_coverage_ledger",
+      "trend_and_anomaly_detection",
+      "mexico_region_pack_reasoning",
+      "independent_recommendation_verification",
+      "composio_and_zernio_action_orchestration",
+      "approval_checkpoint_reconciliation_and_rollback",
+      "commercial_and_public_benefit_measurement",
+      "local_cloud_and_hybrid_execution",
+      "eval_gated_skill_improvement"
+    ],
+    "channels": {
+      "priority": ["whatsapp_business", "web", "enterprise_chat", "cli"],
+      "whatsappBusinessOnly": true,
+      "criticalFallbackRequired": true
+    },
+    "orchestration": {
+      "surface": "one_fanni_identity",
+      "executionModel": "governed_specialist_council",
+      "specialistLeastPrivilege": true,
+      "independentVerifierForConsequentialRecommendations": true,
+      "builderCannotApproveOwnConsequentialAction": true,
+      "providerNeutral": true
+    },
     "lifecycle": [
       "load_configuration",
       "resolve_workspace",
       "build_context_manifest",
       "enforce_memory_policy",
       "resolve_model_route",
+      "plan_evidence",
+      "corroborate_signals",
+      "apply_region_context",
+      "independent_verification",
       "create_checkpoint",
       "execute_cog",
+      "reconcile_external_state",
+      "measure_outcome",
       "validate_output",
       "persist_evidence",
+      "propose_eval_gated_learning",
       "emit_heartbeat"
     ],
     "defaults": {
       "workspaceRequired": true,
       "externalWrites": false,
       "realClientData": false,
+      "signalCommons": false,
       "maxAgentVisits": 5,
       "maxRunSeconds": 120,
       "humanReviewRiskLevels": ["high", "critical"]
     },
     "outputContract": {
-      "required": ["status", "artifacts", "proof", "nextAction"],
+      "required": ["status", "artifacts", "proof", "coverage", "unknowns", "nextAction"],
       "factsSeparatedFromInferences": true,
-      "rollbackReferenceRequired": true
+      "coverageLedgerRequiredForTrendClaims": true,
+      "rollbackReferenceRequired": true,
+      "valueClassificationRequired": true
     }
   }
 }
