@@ -4,6 +4,7 @@ import { ArrowLeft, ClipboardCheck, History as HistoryIcon, ShieldCheck } from '
 import './styles.css';
 import './connections.css';
 import './focus-home.css';
+import './focus-section.css';
 import { LanguageContext, useLanguageProvider, useLanguage } from './hooks/useLanguage.js';
 import { AuthContext, useAuthProvider } from './hooks/useAuth.js';
 
