@@ -19,10 +19,12 @@
 - [x] Security scan script
 - [x] .env.example fully documented
 
-### Phase 2 — Space Agent Integration ⛔
-- [ ] space-agent runtime mount — **BLOCKED: repo not accessible in session**
-- [ ] Fanni session inside Space Agent shell — **BLOCKED**
-- [x] Server-side adapters designed for Space Agent handoff interface
+### Phase 2 — Space Agent Integration ✅
+- [x] space-agent added as git submodule at `space-agent/`
+- [x] Fanni registered as named persona in space-agent (agents/fanni.yaml, prompts/agent-fanni-system.md, avatar-config.js)
+- [x] Customware layer created (`customware/`) — skills, memory, ext/js hooks
+- [x] `npm run space:dev` launches space-agent with CUSTOMWARE_PATH=./customware
+- [x] Server-side sidecar (port 3001) remains for voice + workflow API
 
 ### Phase 3 — Supabase Auth and Tenant Isolation ✅
 - [x] Supabase client in useAuth.js (publishable key only)
@@ -33,10 +35,10 @@
 - [x] is_member(), has_role() SECURITY DEFINER functions
 - [x] Cross-workspace reads blocked at database layer
 
-### Phase 4 — Space Agent Session Runtime ⛔
-- [x] fanniRuntime.js (runFanniDemo, timeTravelFanni)
+### Phase 4 — Space Agent Session Runtime ✅
+- [x] fanniRuntime.js (runFanniDemo, timeTravelFanni) — kept in server/runtime/ for sidecar
 - [x] ICM runtime (createContextManifest, validateContextManifest)
-- [ ] Mounted in Space Agent shell — **BLOCKED**
+- [x] Mounted in Space Agent shell via persona registration + customware ext hooks
 
 ### Phase 5 — Provider Adapters and Model Routing ✅
 - [x] OpenAI adapter (classification, synthesis, report)
