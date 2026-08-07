@@ -39,6 +39,7 @@ const requiredFiles = [
   'server/routes/billing.js',
   'scripts/site-gauntlet.mjs',
   'supabase/migrations/20260807010000_fanni_public_site_and_billing.sql',
+  'supabase/migrations/20260807013000_fanni_private_table_deny_policies.sql',
   'supabase/functions/fanni-zernio-webhook/index.ts'
 ];
 
@@ -116,10 +117,22 @@ if (!billing.includes('FANNI_BILLING_ALLOWED_ORIGINS')) throw new Error('billing
 if (!billing.includes('timingSafeEqual')) throw new Error('billing webhook comparison must be timing-safe');
 if (!billing.includes('verifyStripeWebhook') || !billing.includes('verifyCreemWebhook')) throw new Error('signed provider webhook verification missing');
 if (!billing.includes('upsertEntitlement')) throw new Error('provider-neutral entitlement ledger missing');
+if (!billing.includes('getCheckoutRequest')) throw new Error('entitlements must resolve a Fanni checkout ledger request');
+for (const gate of ['checkout_request_not_found', 'provider_mismatch', 'product_mismatch', 'billing_mode_mismatch']) {
+  if (!billing.includes(gate)) throw new Error(`billing entitlement gate missing ${gate}`);
+}
 
 const publicationMigration = await fs.readFile(path.join(root, 'supabase/migrations/20260807010000_fanni_public_site_and_billing.sql'), 'utf8');
 if (!publicationMigration.includes('published_case_study_requires_permission')) throw new Error('case-study permission constraint missing');
 if (!publicationMigration.includes('published_evidence_requires_verification')) throw new Error('public evidence verification constraint missing');
 if (!publicationMigration.includes('revoke all on fanni.billing_entitlements from anon, authenticated')) throw new Error('billing entitlements must not be anonymously readable');
+
+const denyMigration = await fs.readFile(path.join(root, 'supabase/migrations/20260807013000_fanni_private_table_deny_policies.sql'), 'utf8');
+for (const table of ['lead_diagnostics', 'billing_checkout_requests', 'billing_events', 'billing_entitlements']) {
+  if (!denyMigration.includes(`deny_browser_${table}`)) throw new Error(`explicit browser deny policy missing for ${table}`);
+}
+if (!denyMigration.includes('using (false)') || !denyMigration.includes('with check (false)')) {
+  throw new Error('private commercial policies must explicitly deny browser reads and writes');
+}
 
 console.log('Production configuration validated.');
