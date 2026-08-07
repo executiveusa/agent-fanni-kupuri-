@@ -1,217 +1,312 @@
+import { useState } from 'react';
+import {
+  ArrowDownRight,
+  ArrowUpRight,
+  CheckCircle2,
+  Clock3,
+  Eye,
+  Globe2,
+  LockKeyhole,
+  Menu,
+  Radar,
+  ShieldCheck,
+  X
+} from 'lucide-react';
 import { useLanguage } from '../hooks/useLanguage.js';
+import { FanniCharacter } from '../components/FanniCharacter.jsx';
+import { FanniDesk } from '../components/FanniDesk.jsx';
+import { OFFERS, PROGRAMS, PROJECTS, SIGNAL_LAB, SITE_COPY } from '../content/publicSite.js';
 
-const DEMO_CHECKPOINTS = [
-  { id: 'cp-001', stage: 'ingest', label: 'Records collected', time: '09:01' },
-  { id: 'cp-002', stage: 'classify', label: 'Classification complete', time: '09:02' },
-  { id: 'cp-003', stage: 'verify', label: 'Human review gate', time: '09:04', highlight: true },
-  { id: 'cp-004', stage: 'report', label: 'Report generated', time: '09:06' }
-];
+const STATUS_ICONS = {
+  active: Clock3,
+  research: Radar,
+  shipped: CheckCircle2
+};
 
-const USE_CASES = [
-  { icon: '📡', en: 'Weekly media intelligence in minutes', es: 'Inteligencia de medios semanal en minutos' },
-  { icon: '📋', en: 'Approval workflows with evidence trail', es: 'Flujos de aprobación con rastro de evidencia' },
-  { icon: '🔒', en: 'Private by default, auditable always', es: 'Privado por defecto, auditable siempre' },
-  { icon: '🌐', en: 'Bilingual voice interface', es: 'Interfaz de voz bilingüe' }
-];
+function labelForType(type, labels) {
+  if (type === 'internal') return labels.internal;
+  if (type === 'private') return labels.private;
+  if (type === 'pilot') return labels.pilot;
+  if (type === 'case-study') return labels.caseStudy;
+  return labels.lab;
+}
 
 /**
  * @param {{ onNavigate: (route: string) => void }} props
  */
 export function Landing({ onNavigate }) {
-  const { lang, t, toggle } = useLanguage();
+  const { lang, toggle } = useLanguage();
+  const [menuOpen, setMenuOpen] = useState(false);
+  const copy = SITE_COPY[lang];
+  const featuredProjects = PROJECTS.slice(0, 4);
+  const liveProjects = PROJECTS.filter(project => project.status === 'active').slice(0, 4);
+
+  function go(route) {
+    setMenuOpen(false);
+    onNavigate(route);
+  }
+
+  function scrollTo(id) {
+    setMenuOpen(false);
+    document.getElementById(id)?.scrollIntoView({ behavior: 'smooth', block: 'start' });
+  }
 
   return (
-    <div className="landing">
-      {/* Navigation */}
-      <nav className="landing-nav" aria-label="Main navigation">
-        <a className="landing-nav__brand" href="#/" aria-label="Fanni home">
-          <span className="landing-nav__wordmark">FANNI</span>
-          <span className="landing-nav__org">Kupuri Media</span>
-        </a>
-        <div className="landing-nav__actions">
-          <button className="lang-toggle" onClick={toggle} aria-label={`Switch to ${lang === 'en' ? 'Spanish' : 'English'}`}>
+    <div className="public-site">
+      <header className="public-nav">
+        <button type="button" className="public-nav__brand" onClick={() => go('/')} aria-label="Fanni home">
+          <strong>FANNI</strong>
+          <span>Kupuri Media</span>
+        </button>
+
+        <nav className={`public-nav__links ${menuOpen ? 'public-nav__links--open' : ''}`} aria-label="Primary navigation">
+          <button type="button" onClick={() => scrollTo('work')}>{copy.nav.work}</button>
+          <button type="button" onClick={() => scrollTo('programs')}>{copy.nav.programs}</button>
+          <button type="button" onClick={() => scrollTo('live')}>{copy.nav.live}</button>
+          <button type="button" onClick={() => scrollTo('signal-lab')}>{copy.nav.lab}</button>
+          <button type="button" onClick={() => scrollTo('about')}>{copy.nav.about}</button>
+        </nav>
+
+        <div className="public-nav__actions">
+          <button type="button" className="public-nav__language" onClick={toggle} aria-label={lang === 'en' ? 'Cambiar a español' : 'Switch to English'}>
             {lang === 'en' ? 'ES' : 'EN'}
           </button>
-          <button className="btn-ghost" onClick={() => onNavigate('/auth')}>
-            {t.nav.signIn}
+          <button type="button" className="public-nav__signin" onClick={() => go('/auth')}>{copy.nav.signIn}</button>
+          <button type="button" className="public-nav__ask" onClick={() => go('/app/chat')}>{copy.nav.ask} <ArrowUpRight size={16} /></button>
+          <button
+            type="button"
+            className="public-nav__menu"
+            onClick={() => setMenuOpen(value => !value)}
+            aria-expanded={menuOpen}
+            aria-label={menuOpen ? 'Close menu' : 'Open menu'}
+          >
+            {menuOpen ? <X size={20} /> : <Menu size={20} />}
           </button>
-          <button className="btn-primary" onClick={() => onNavigate('/app')}>
-            {t.landing.ctaButton}
+        </div>
+      </header>
+
+      <main>
+        <section className="public-hero" aria-labelledby="public-hero-title">
+          <div className="public-hero__copy">
+            <p className="public-eyebrow">{copy.hero.eyebrow}</p>
+            <h1 id="public-hero-title">{copy.hero.headline}</h1>
+            <p className="public-hero__statement">{copy.hero.statement}</p>
+            <div className="public-hero__actions">
+              <button type="button" className="public-button public-button--primary" onClick={() => go('/app/chat')}>
+                {copy.hero.primary} <ArrowUpRight size={19} />
+              </button>
+              <button type="button" className="public-button public-button--text" onClick={() => scrollTo('live')}>
+                {copy.hero.secondary} <ArrowDownRight size={18} />
+              </button>
+            </div>
+          </div>
+
+          <div className="public-hero__character">
+            <FanniCharacter labelled />
+            <div className="public-hero__character-note">
+              <span>{lang === 'en' ? 'Eight governed capabilities' : 'Ocho capacidades gobernadas'}</span>
+              <strong>{lang === 'en' ? 'One clear Fanni' : 'Una sola Fanni clara'}</strong>
+            </div>
+          </div>
+        </section>
+
+        <section className="public-proof" aria-label={lang === 'en' ? 'Current proof' : 'Evidencia actual'}>
+          {copy.proof.map((item, index) => (
+            <div key={item} className="public-proof__item">
+              <span>{String(index + 1).padStart(2, '0')}</span>
+              <strong>{item}</strong>
+            </div>
+          ))}
+        </section>
+
+        <section id="programs" className="public-section public-programs" aria-labelledby="programs-title">
+          <header className="public-section__header">
+            <p className="public-section__index">01 · {copy.nav.programs}</p>
+            <div>
+              <h2 id="programs-title">{copy.sections.programs}</h2>
+              <p>{copy.sections.programsIntro}</p>
+            </div>
+          </header>
+
+          <div className="public-programs__list">
+            {PROGRAMS.map(program => (
+              <article key={program.slug} className={`public-program public-program--${program.accent}`}>
+                <span className="public-program__number">{program.number}</span>
+                <div className="public-program__main">
+                  <p className="public-program__name">{program.name[lang]}</p>
+                  <h3>{program.promise[lang]}</h3>
+                  <p className="public-program__pain">{program.pain[lang]}</p>
+                </div>
+                <ul className="public-program__outcomes" aria-label={copy.labels.outcome}>
+                  {program.outcomes[lang].map(outcome => <li key={outcome}>{outcome}</li>)}
+                </ul>
+                <button type="button" className="public-program__link" onClick={() => go(`/programs/${program.slug}`)}>
+                  {copy.labels.start} <ArrowUpRight size={20} />
+                </button>
+              </article>
+            ))}
+          </div>
+        </section>
+
+        <section id="work" className="public-section public-work" aria-labelledby="work-title">
+          <header className="public-section__header public-section__header--light">
+            <p className="public-section__index">02 · {copy.nav.work}</p>
+            <div>
+              <h2 id="work-title">{copy.sections.work}</h2>
+              <p>{copy.sections.workIntro}</p>
+            </div>
+          </header>
+
+          <div className="public-work__grid">
+            {featuredProjects.map((project, index) => (
+              <article key={project.slug} className={`public-project public-project--${project.accent} ${index === 0 ? 'public-project--lead' : ''}`}>
+                <div className="public-project__meta">
+                  <span>{labelForType(project.type, copy.labels)}</span>
+                  <span>{project.location}</span>
+                </div>
+                <div className="public-project__body">
+                  <p>{project.client}</p>
+                  <h3>{project.title}</h3>
+                  <strong>{project.transformation[lang]}</strong>
+                </div>
+                <div className="public-project__evidence">
+                  <span>{copy.labels.evidence}</span>
+                  <p>{project.evidence[0]}</p>
+                </div>
+                <button type="button" onClick={() => go(`/work/${project.slug}`)}>
+                  {copy.labels.details} <ArrowUpRight size={19} />
+                </button>
+              </article>
+            ))}
+          </div>
+        </section>
+
+        <section id="live" className="public-section public-live" aria-labelledby="live-title">
+          <header className="public-section__header">
+            <p className="public-section__index">03 · {copy.nav.live}</p>
+            <div>
+              <h2 id="live-title">{copy.sections.live}</h2>
+              <p>{copy.sections.liveIntro}</p>
+            </div>
+          </header>
+
+          <div className="public-live__table" role="list">
+            {liveProjects.map(project => {
+              const StatusIcon = STATUS_ICONS[project.status] || Clock3;
+              return (
+                <button key={project.slug} type="button" className="public-live__row" onClick={() => go(`/work/${project.slug}`)} role="listitem">
+                  <span className="public-live__status"><StatusIcon size={16} /> {copy.labels[project.status]}</span>
+                  <span className="public-live__project">
+                    <strong>{project.title}</strong>
+                    <small>{project.stage}</small>
+                  </span>
+                  <span className="public-live__next"><small>{copy.labels.next}</small>{project.next[lang]}</span>
+                  <span className="public-live__date">{project.updated}</span>
+                  <ArrowUpRight size={19} />
+                </button>
+              );
+            })}
+          </div>
+        </section>
+
+        <section id="signal-lab" className="public-section public-lab" aria-labelledby="lab-title">
+          <header className="public-section__header public-section__header--light">
+            <p className="public-section__index">04 · {copy.nav.lab}</p>
+            <div>
+              <h2 id="lab-title">{copy.sections.lab}</h2>
+              <p>{copy.sections.labIntro}</p>
+            </div>
+          </header>
+
+          <div className="public-lab__list">
+            {SIGNAL_LAB.map((signal, index) => (
+              <article key={signal.slug} className="public-signal">
+                <div className="public-signal__number">{String(index + 1).padStart(2, '0')}</div>
+                <div className="public-signal__content">
+                  <p>{signal.theme[lang]}</p>
+                  <h3>{signal.title[lang]}</h3>
+                  <p className="public-signal__evidence">{signal.evidence[lang]}</p>
+                </div>
+                <div className="public-signal__offer">
+                  <small>{lang === 'en' ? 'Offer being tested' : 'Oferta en prueba'}</small>
+                  <strong>{signal.offer[lang]}</strong>
+                </div>
+                <button type="button" onClick={() => go(`/signals/${signal.slug}`)} aria-label={`${copy.labels.read}: ${signal.title[lang]}`}>
+                  <ArrowUpRight size={22} />
+                </button>
+              </article>
+            ))}
+          </div>
+        </section>
+
+        <section id="offers" className="public-section public-offers" aria-labelledby="offers-title">
+          <header className="public-section__header">
+            <p className="public-section__index">05 · {lang === 'en' ? 'Offers' : 'Ofertas'}</p>
+            <div>
+              <h2 id="offers-title">{copy.sections.offers}</h2>
+              <p>{copy.sections.offersIntro}</p>
+            </div>
+          </header>
+
+          <div className="public-offers__grid">
+            {OFFERS.map((offer, index) => (
+              <article key={offer.slug} className={`public-offer ${index === 0 ? 'public-offer--featured' : ''}`}>
+                <p className="public-offer__number">{String(index + 1).padStart(2, '0')}</p>
+                <h3>{offer.name[lang]}</h3>
+                <div className="public-offer__price">
+                  <strong>{typeof offer.price === 'string' ? offer.price : offer.price[lang]}</strong>
+                  <span>{offer.cadence[lang]}</span>
+                </div>
+                {offer.setup && <p className="public-offer__setup">{offer.setup}</p>}
+                <p>{offer.promise[lang]}</p>
+                <ul>
+                  {offer.includes[lang].map(item => <li key={item}>{item}</li>)}
+                </ul>
+                <button type="button" onClick={() => go(`/checkout/${offer.slug}`)}>
+                  {index === 0 ? copy.labels.checkout : copy.labels.start} <ArrowUpRight size={18} />
+                </button>
+              </article>
+            ))}
+          </div>
+        </section>
+
+        <section id="about" className="public-sovereignty" aria-labelledby="sovereignty-title">
+          <div className="public-sovereignty__statement">
+            <p className="public-section__index">06 · {copy.nav.about}</p>
+            <h2 id="sovereignty-title">{copy.sections.sovereignty}</h2>
+            <p>{copy.sections.sovereigntyBody}</p>
+          </div>
+          <div className="public-sovereignty__principles">
+            <div><LockKeyhole size={22} /><strong>{lang === 'en' ? 'Private by default' : 'Privado por defecto'}</strong><span>{lang === 'en' ? 'Workspace and client boundaries stay explicit.' : 'Los límites de espacio y cliente permanecen explícitos.'}</span></div>
+            <div><ShieldCheck size={22} /><strong>{lang === 'en' ? 'Approval before consequence' : 'Aprobación antes de consecuencias'}</strong><span>{lang === 'en' ? 'Publishing, sending, deleting, or spending requires policy.' : 'Publicar, enviar, borrar o gastar requiere política.'}</span></div>
+            <div><Eye size={22} /><strong>{lang === 'en' ? 'Evidence before certainty' : 'Evidencia antes de certeza'}</strong><span>{lang === 'en' ? 'Facts, inferences, unknowns, and blind spots remain separate.' : 'Hechos, inferencias, incógnitas y puntos ciegos permanecen separados.'}</span></div>
+            <div><Globe2 size={22} /><strong>{lang === 'en' ? 'Local, cloud, or hybrid' : 'Local, nube o híbrido'}</strong><span>{lang === 'en' ? 'The deployment follows the sensitivity of the work.' : 'El despliegue sigue la sensibilidad del trabajo.'}</span></div>
+          </div>
+        </section>
+
+        <section className="public-close" aria-label={copy.sections.close}>
+          <p>FANNI · KUPURI MEDIA</p>
+          <h2>{copy.sections.close}</h2>
+          <button type="button" onClick={() => go('/checkout/problem-scan')}>
+            {copy.labels.checkout} <ArrowUpRight size={24} />
           </button>
+        </section>
+      </main>
+
+      <footer className="public-footer">
+        <div>
+          <strong>FANNI</strong>
+          <span>Kupuri Media · Mexico</span>
         </div>
-      </nav>
-
-      {/* Hero */}
-      <section className="landing-hero" aria-labelledby="hero-headline">
-        <div className="landing-hero__content">
-          <p className="landing-hero__eyebrow" aria-hidden="true">Agent Fanni · Kupuri Media</p>
-          <h1 id="hero-headline" className="landing-hero__headline">
-            {t.landing.headline}
-          </h1>
-          <p className="landing-hero__sub">{t.landing.subheadline}</p>
-          <div className="landing-hero__actions">
-            <button className="btn-primary btn-large" onClick={() => onNavigate('/app')}>
-              {t.landing.ctaButton}
-            </button>
-            <button className="btn-ghost btn-large" onClick={() => document.getElementById('how-it-works')?.scrollIntoView({ behavior: 'smooth' })}>
-              {t.landing.ctaSecondary}
-            </button>
-          </div>
-        </div>
-
-        <div className="landing-hero__avatar-wrap" aria-hidden="true">
-          <div className="landing-hero__avatar-ring" />
-          <div className="landing-hero__avatar-portrait">
-            <img
-              src={`/avatars/fanni-${import.meta.env.VITE_FANNI_AVATAR_VARIANT || 'a'}.png`}
-              alt="Fanni"
-              className="landing-hero__avatar-img"
-              onError={(e) => { e.currentTarget.style.display = 'none'; e.currentTarget.nextElementSibling.style.display = 'flex'; }}
-            />
-            <div className="landing-hero__avatar-fallback">
-              <svg viewBox="0 0 200 200" xmlns="http://www.w3.org/2000/svg">
-                <defs>
-                  <radialGradient id="hg" cx="40%" cy="35%">
-                    <stop offset="0%" stopColor="#C58A9E" />
-                    <stop offset="100%" stopColor="#4C1027" />
-                  </radialGradient>
-                </defs>
-                <circle cx="100" cy="100" r="100" fill="#0B0A0C" />
-                <ellipse cx="100" cy="85" rx="38" ry="44" fill="url(#hg)" />
-                <ellipse cx="100" cy="160" rx="60" ry="50" fill="#741C43" />
-                <text x="100" y="95" textAnchor="middle" fontSize="48" fontWeight="800" fill="#F3EEE6" fontFamily="serif">F</text>
-              </svg>
-            </div>
-          </div>
-          <div className="landing-hero__avatar-state">
-            <span className="pulse-dot" />
-            <span>{lang === 'en' ? 'Ready to work' : 'Lista para trabajar'}</span>
-          </div>
-        </div>
-      </section>
-
-      {/* Trust strip */}
-      <div className="landing-trust" role="list" aria-label="Trust indicators">
-        {t.landing.trust.map((item) => (
-          <span key={item} role="listitem" className="landing-trust__item">
-            <span className="landing-trust__dot" aria-hidden="true" />
-            {item}
-          </span>
-        ))}
-      </div>
-
-      {/* Capability marquee */}
-      <div className="landing-marquee" aria-hidden="true">
-        <div className="landing-marquee__track">
-          {[...t.landing.capabilities, ...t.landing.capabilities].map((cap, i) => (
-            <span key={i} className="landing-marquee__item">{cap}</span>
-          ))}
-        </div>
-      </div>
-
-      {/* How it works */}
-      <section id="how-it-works" className="landing-section" aria-labelledby="how-heading">
-        <h2 id="how-heading" className="landing-section__title">{t.landing.sections.howItWorks}</h2>
-        <div className="landing-workflow">
-          <div className="landing-workflow__stage">
-            <span className="landing-workflow__num">01</span>
-            <strong>{lang === 'en' ? 'Ingest' : 'Ingestión'}</strong>
-            <p>{lang === 'en' ? 'Fanni collects and normalizes signals from your configured sources.' : 'Fanni recopila y normaliza señales de tus fuentes configuradas.'}</p>
-          </div>
-          <div className="landing-workflow__arrow" aria-hidden="true">→</div>
-          <div className="landing-workflow__stage">
-            <span className="landing-workflow__num">02</span>
-            <strong>{lang === 'en' ? 'Classify' : 'Clasificar'}</strong>
-            <p>{lang === 'en' ? 'Each signal is classified, scored for risk, and flagged for review when needed.' : 'Cada señal es clasificada, puntuada por riesgo y marcada para revisión cuando es necesario.'}</p>
-          </div>
-          <div className="landing-workflow__arrow" aria-hidden="true">→</div>
-          <div className="landing-workflow__stage">
-            <span className="landing-workflow__num">03</span>
-            <strong>{lang === 'en' ? 'Synthesize' : 'Sintetizar'}</strong>
-            <p>{lang === 'en' ? 'Verified signals become a structured, downloadable intelligence report.' : 'Las señales verificadas se convierten en un reporte de inteligencia estructurado y descargable.'}</p>
-          </div>
-          <div className="landing-workflow__arrow" aria-hidden="true">→</div>
-          <div className="landing-workflow__stage landing-workflow__stage--highlight">
-            <span className="landing-workflow__num">04</span>
-            <strong>{lang === 'en' ? 'Measure' : 'Medir'}</strong>
-            <p>{lang === 'en' ? 'Every run produces evidence of time saved and automation rate.' : 'Cada ejecución produce evidencia del tiempo ahorrado y la tasa de automatización.'}</p>
-          </div>
-        </div>
-      </section>
-
-      {/* Time travel */}
-      <section className="landing-section landing-section--dark" aria-labelledby="time-travel-heading">
-        <h2 id="time-travel-heading" className="landing-section__title">{t.landing.sections.timeTravel}</h2>
-        <p className="landing-section__sub">{t.landing.sections.timeTravelDesc}</p>
-        <div className="checkpoint-timeline" role="list" aria-label="Checkpoint timeline">
-          {DEMO_CHECKPOINTS.map((cp) => (
-            <div
-              key={cp.id}
-              className={`checkpoint-node ${cp.highlight ? 'checkpoint-node--highlight' : ''}`}
-              role="listitem"
-            >
-              <div className="checkpoint-node__time">{cp.time}</div>
-              <div className="checkpoint-node__dot" aria-hidden="true" />
-              <div className="checkpoint-node__label">
-                <span className="badge">{cp.stage}</span>
-                <span>{cp.label}</span>
-              </div>
-            </div>
-          ))}
-        </div>
-        <p className="landing-section__caption">
-          {lang === 'en'
-            ? 'She listens. She organizes. She builds. She remembers. She can go back.'
-            : 'Escucha. Organiza. Construye. Recuerda. Puede regresar.'}
-        </p>
-      </section>
-
-      {/* Use cases */}
-      <section className="landing-section" aria-labelledby="use-cases-heading">
-        <h2 id="use-cases-heading" className="landing-section__title">{t.landing.sections.useCases}</h2>
-        <div className="use-case-grid">
-          {USE_CASES.map((uc) => (
-            <div key={uc.en} className="use-case-card">
-              <span className="use-case-card__icon" aria-hidden="true">{uc.icon}</span>
-              <p>{lang === 'en' ? uc.en : uc.es}</p>
-            </div>
-          ))}
-        </div>
-      </section>
-
-      {/* Sovereignty */}
-      <section className="landing-section landing-section--sovereignty" aria-labelledby="sovereignty-heading">
-        <p className="sovereignty-label" id="sovereignty-heading">{t.landing.sovereignty.label}</p>
-        <div className="sovereignty-lines" aria-label="Sovereignty principles">
-          {t.landing.sovereignty.lines.map((line) => (
-            <p key={line} className="sovereignty-line">{line}</p>
-          ))}
-        </div>
-      </section>
-
-      {/* Final CTA */}
-      <section className="landing-cta" aria-label="Call to action">
-        <h2 className="landing-cta__headline">
-          {lang === 'en' ? 'Ready to meet Fanni?' : '¿Lista para conocer a Fanni?'}
-        </h2>
-        <button className="btn-primary btn-large" onClick={() => onNavigate('/app')}>
-          {t.landing.ctaButton}
-        </button>
-      </section>
-
-      {/* Footer */}
-      <footer className="landing-footer">
-        <div className="landing-footer__brand">
-          <strong>FANNI</strong> · Kupuri Media
-        </div>
-        <nav className="landing-footer__links" aria-label="Footer links">
-          <button className="link-ghost" onClick={() => onNavigate('/privacy')}>Privacy</button>
-          <button className="link-ghost" onClick={() => onNavigate('/status')}>Status</button>
+        <nav aria-label="Footer navigation">
+          <button type="button" onClick={() => go('/privacy')}>Privacy</button>
+          <button type="button" onClick={() => go('/status')}>Status</button>
+          <button type="button" onClick={() => go('/app')}>{lang === 'en' ? 'Workspace' : 'Espacio de trabajo'}</button>
         </nav>
-        <p className="landing-footer__copy">
-          {lang === 'en' ? 'All rights reserved.' : 'Todos los derechos reservados.'}
-        </p>
+        <p>{lang === 'en' ? 'Built in public. Claims remain tied to evidence.' : 'Construido en público. Las afirmaciones permanecen ligadas a evidencia.'}</p>
       </footer>
+
+      <FanniDesk onNavigate={go} />
     </div>
   );
 }

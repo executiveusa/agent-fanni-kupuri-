@@ -1,7 +1,7 @@
 {
   "name": "agent-fanni-kupuri",
   "private": true,
-  "version": "0.5.0",
+  "version": "0.6.0",
   "type": "module",
   "scripts": {
     "start": "node scripts/start-fanni-space.mjs",
@@ -14,16 +14,17 @@
     "lint": "eslint src server scripts tests --ext .js,.jsx --max-warnings 0",
     "typecheck": "tsc --noEmit",
     "test": "node --test tests/*.test.js",
-    "test:unit": "node --test tests/production-runtime.test.js tests/checkpoint-rollback.test.js tests/zernio-social.test.js tests/fanni-pulso.test.js",
+    "test:unit": "node --test tests/production-runtime.test.js tests/checkpoint-rollback.test.js tests/zernio-social.test.js tests/billing.test.js tests/public-site.test.js",
     "test:integration": "node --test tests/workspace-isolation.test.js",
     "test:e2e": "echo 'E2E requires live Supabase + deployed runtime; see docs/LOCAL_DEVELOPMENT.md'",
-    "demo:pulso": "node scripts/run-fanni-pulso-demos.mjs",
     "zernio:check": "node scripts/zernio-setup.mjs check",
     "zernio:setup": "node scripts/zernio-setup.mjs",
+    "pulso:demo": "node scripts/run-fanni-pulso-demo.mjs",
+    "gauntlet:site": "node scripts/site-gauntlet.mjs",
     "validate:production": "node scripts/validate-production.mjs",
     "validate:migrations": "node scripts/validate-migrations.mjs",
     "security:scan": "node scripts/security-scan.mjs",
-    "check": "npm run security:scan && npm run validate:production && npm run test && npm run build"
+    "check": "npm run security:scan && npm run validate:production && npm run gauntlet:site && npm run test && npm run build"
   },
   "dependencies": {
     "@supabase/supabase-js": "^2.57.4",
