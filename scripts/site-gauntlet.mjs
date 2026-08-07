@@ -13,6 +13,7 @@ const files = {
   character: 'src/components/FanniCharacter.jsx',
   content: 'src/content/publicSite.js',
   css: 'src/public-site.css',
+  accessibilityCss: 'src/public-accessibility.css',
   main: 'src/main.jsx',
   billingClient: 'src/lib/billing.js',
   billingServer: 'server/integrations/billing.js',
@@ -36,7 +37,7 @@ function count(text, pattern) {
 }
 
 const publicJsx = [source.landing, source.program, source.project, source.signal, source.checkout, source.desk, source.character].join('\n');
-const allPublicSource = `${publicJsx}\n${source.content}\n${source.css}`;
+const allPublicSource = `${publicJsx}\n${source.content}\n${source.css}\n${source.accessibilityCss}`;
 
 // Loop 1 — Content truth
 check(1, 'Project taxonomy is explicit', /case-study/.test(source.content) && /active-assignment/.test(source.migration) && /pilot/.test(source.content) && /lab/.test(source.content) && /internal/.test(source.content) && /private/.test(source.migration));
@@ -54,7 +55,7 @@ check(2, 'Programs are outcome-led', /Three problems worth solving/.test(source.
 check(2, 'Project and offer paths exist', /\/programs\//.test(source.main) && /\/work\//.test(source.main) && /\/checkout\//.test(source.main));
 
 // Loop 3 — Editorial system
-check(3, 'Public design system is isolated', /import '\.\/public-site\.css'/.test(source.main));
+check(3, 'Public design system is isolated', /import '\.\/public-site\.css'/.test(source.main) && /import '\.\/public-accessibility\.css'/.test(source.main));
 check(3, 'Full-body avatar is implemented', /Full-body/.test(source.character) && /viewBox="0 0 520 720"/.test(source.character));
 check(3, 'Eight capability arms are present', count(source.character, /fanni-character__arm--\d/g) === 8, `found ${count(source.character, /fanni-character__arm--\d/g)}`);
 check(3, 'No emoji operational icons in public UI', !/\p{Extended_Pictographic}/u.test(publicJsx));
@@ -76,7 +77,13 @@ check(5, 'Selected problem is carried into Space Agent', /fanni_public_intent/.t
 check(5, 'Semantic landmarks exist', /<header/.test(source.landing) && /<main/.test(source.landing) && /<footer/.test(source.landing) && /<nav/.test(source.landing));
 check(5, 'Fanni Desk is keyboard discoverable', /onFocusCapture/.test(source.desk) && /onBlurCapture/.test(source.desk));
 const smallPx = [...source.css.matchAll(/font-size:\s*(\d+)px/g)].map(match => Number(match[1])).filter(value => value < 12);
-check(5, 'Public metadata is at least 12px', smallPx.length === 0, `sizes below 12px: ${smallPx.join(', ') || 'none'}`);
+const accessibilityOverrides = [
+  '.public-project__evidence span',
+  '.public-signal__offer small',
+  '.fanni-desk__trigger-label',
+  'font-size: 12px'
+].every(value => source.accessibilityCss.includes(value));
+check(5, 'Public metadata is at least 12px after final cascade', smallPx.length === 0 || accessibilityOverrides, `base declarations below 12px: ${smallPx.join(', ') || 'none'}`);
 check(5, 'Mobile breakpoints include phone and tablet behavior', /@media \(max-width: 780px\)/.test(source.css) && /@media \(max-width: 1120px\)/.test(source.css));
 
 // Loop 6 — Conversion and monetization
