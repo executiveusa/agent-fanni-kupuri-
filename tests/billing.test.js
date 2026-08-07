@@ -10,13 +10,40 @@ import {
 } from '../server/integrations/billing.js';
 
 function makeStore() {
-  const records = { checkouts: [], events: [], entitlements: [] };
+  const records = { checkouts: [], events: [], entitlements: [], checkoutUpdates: [] };
   return {
     records,
-    async recordCheckoutRequest(value) { records.checkouts.push(value); },
+    async recordCheckoutRequest(value) {
+      const index = records.checkouts.findIndex(item => item.request_id === value.request_id);
+      if (index >= 0) records.checkouts[index] = value;
+      else records.checkouts.push(value);
+    },
+    async getCheckoutRequest(requestId) {
+      return records.checkouts.find(item => item.request_id === requestId) || null;
+    },
+    async updateCheckoutRequest(requestId, patch) {
+      const checkout = records.checkouts.find(item => item.request_id === requestId);
+      if (checkout) Object.assign(checkout, patch);
+      records.checkoutUpdates.push({ requestId, patch });
+    },
     async recordEvent(value) { records.events.push(value); },
     async upsertEntitlement(value) { records.entitlements.push(value); }
   };
+}
+
+function seedCheckout(store, overrides = {}) {
+  const checkout = {
+    request_id: 'f36b4699-21d7-4b1d-9f61-3d2077fe30a1',
+    provider: 'stripe',
+    provider_checkout_id: 'cs_test_123',
+    product_key: 'problem_scan',
+    mode: 'payment',
+    status: 'created',
+    customer_ref: null,
+    ...overrides
+  };
+  store.records.checkouts.push(checkout);
+  return checkout;
 }
 
 const baseEnv = {
@@ -134,8 +161,9 @@ test('Creem webhook verification uses HMAC over raw body', () => {
   assert.equal(verifyCreemWebhook({ rawBody, signature: '00', secret: baseEnv.CREEM_WEBHOOK_SECRET }), false);
 });
 
-test('verified Stripe event activates entitlement through ledger', async () => {
+test('verified Stripe event activates entitlement only through matching Fanni checkout ledger', async () => {
   const store = makeStore();
+  seedCheckout(store);
   const now = 1_800_000_000_000;
   const timestamp = Math.floor(now / 1000);
   const event = {
@@ -166,11 +194,91 @@ test('verified Stripe event activates entitlement through ledger', async () => {
     now
   });
 
+  assert.equal(result.processingStatus, 'processed');
   assert.equal(result.entitlementStatus, 'active');
   assert.equal(store.records.events.length, 1);
   assert.equal(store.records.entitlements.length, 1);
   assert.equal(store.records.entitlements[0].status, 'active');
   assert.equal(store.records.entitlements[0].product_key, 'problem_scan');
+  assert.equal(store.records.checkoutUpdates.length, 1);
+  assert.equal(store.records.checkouts[0].status, 'completed');
+  assert.equal(store.records.checkouts[0].customer_ref, 'cus_123');
+});
+
+test('validly signed event with unknown checkout is recorded but cannot grant entitlement', async () => {
+  const store = makeStore();
+  const now = 1_800_000_000_000;
+  const timestamp = Math.floor(now / 1000);
+  const event = {
+    id: 'evt_unknown_checkout',
+    type: 'checkout.session.completed',
+    data: {
+      object: {
+        customer: 'cus_unknown',
+        metadata: {
+          product_key: 'problem_scan',
+          fanni_request_id: '6835365e-99da-4ba7-a99d-9393e3b1d2fa'
+        }
+      }
+    }
+  };
+  const rawBody = JSON.stringify(event);
+  const signature = crypto.createHmac('sha256', baseEnv.STRIPE_WEBHOOK_SECRET)
+    .update(`${timestamp}.${rawBody}`)
+    .digest('hex');
+
+  const result = await processBillingWebhook({
+    provider: 'stripe',
+    rawBody,
+    signature: `t=${timestamp},v1=${signature}`,
+    env: baseEnv,
+    store,
+    now
+  });
+
+  assert.equal(result.processingStatus, 'ignored');
+  assert.equal(result.entitlementStatus, null);
+  assert.equal(result.ignoredReason, 'checkout_request_not_found');
+  assert.equal(store.records.events.length, 1);
+  assert.equal(store.records.events[0].request_id, null);
+  assert.equal(store.records.entitlements.length, 0);
+});
+
+test('validly signed event cannot switch provider or product from the checkout ledger', async () => {
+  const store = makeStore();
+  seedCheckout(store, { provider: 'stripe', product_key: 'problem_scan' });
+  const now = 1_800_000_000_000;
+  const timestamp = Math.floor(now / 1000);
+  const event = {
+    id: 'evt_product_mismatch',
+    type: 'checkout.session.completed',
+    data: {
+      object: {
+        customer: 'cus_123',
+        metadata: {
+          product_key: 'demand_operator',
+          fanni_request_id: 'f36b4699-21d7-4b1d-9f61-3d2077fe30a1'
+        }
+      }
+    }
+  };
+  const rawBody = JSON.stringify(event);
+  const signature = crypto.createHmac('sha256', baseEnv.STRIPE_WEBHOOK_SECRET)
+    .update(`${timestamp}.${rawBody}`)
+    .digest('hex');
+
+  const result = await processBillingWebhook({
+    provider: 'stripe',
+    rawBody,
+    signature: `t=${timestamp},v1=${signature}`,
+    env: baseEnv,
+    store,
+    now
+  });
+
+  assert.equal(result.processingStatus, 'ignored');
+  assert.equal(result.ignoredReason, 'product_mismatch');
+  assert.equal(store.records.entitlements.length, 0);
 });
 
 test('invalid webhook signature fails without changing entitlement', async () => {
@@ -189,8 +297,13 @@ test('invalid webhook signature fails without changing entitlement', async () =>
   assert.equal(store.records.entitlements.length, 0);
 });
 
-test('verified Creem checkout event activates entitlement', async () => {
+test('verified Creem checkout event activates entitlement through matching ledger', async () => {
   const store = makeStore();
+  seedCheckout(store, {
+    request_id: 'dcf337af-7bc6-4f90-af35-891c83def265',
+    provider: 'creem',
+    provider_checkout_id: 'ch_test_123'
+  });
   const now = 1_800_000_000_000;
   const event = {
     id: 'evt_creem_complete',
@@ -215,6 +328,7 @@ test('verified Creem checkout event activates entitlement', async () => {
     now
   });
 
+  assert.equal(result.processingStatus, 'processed');
   assert.equal(result.entitlementStatus, 'active');
   assert.equal(store.records.events.length, 1);
   assert.equal(store.records.entitlements.length, 1);
