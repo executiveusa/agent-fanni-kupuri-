@@ -5,10 +5,15 @@ import './styles.css';
 import './connections.css';
 import './focus-home.css';
 import './focus-section.css';
+import './public-site.css';
 import { LanguageContext, useLanguageProvider, useLanguage } from './hooks/useLanguage.js';
 import { AuthContext, useAuthProvider } from './hooks/useAuth.js';
 
 const Landing = lazy(() => import('./pages/Landing.jsx').then(module => ({ default: module.Landing })));
+const ProgramPage = lazy(() => import('./pages/ProgramPage.jsx').then(module => ({ default: module.ProgramPage })));
+const ProjectPage = lazy(() => import('./pages/ProjectPage.jsx').then(module => ({ default: module.ProjectPage })));
+const SignalPage = lazy(() => import('./pages/SignalPage.jsx').then(module => ({ default: module.SignalPage })));
+const Checkout = lazy(() => import('./pages/Checkout.jsx').then(module => ({ default: module.Checkout })));
 const Auth = lazy(() => import('./pages/Auth.jsx').then(module => ({ default: module.Auth })));
 const Home = lazy(() => import('./pages/Home.jsx').then(module => ({ default: module.Home })));
 const ChatApp = lazy(() => import('./pages/ChatApp.jsx').then(module => ({ default: module.ChatApp })));
@@ -17,6 +22,11 @@ const Connections = lazy(() => import('./pages/Connections.jsx').then(module => 
 function getRoute() {
   const hash = window.location.hash.replace('#', '') || '/';
   if (hash === '/auth' || hash === '/auth/') return '/auth';
+  if (hash.startsWith('/programs/')) return hash;
+  if (hash.startsWith('/work/')) return hash;
+  if (hash.startsWith('/signals/')) return hash;
+  if (hash === '/checkout/success' || hash === '/checkout/cancelled') return hash;
+  if (hash.startsWith('/checkout/')) return hash;
   if (hash.startsWith('/app/connections')) return '/app/connections';
   if (hash.startsWith('/app/approvals')) return '/app/approvals';
   if (hash.startsWith('/app/history')) return '/app/history';
@@ -25,6 +35,10 @@ function getRoute() {
   if (hash === '/privacy') return '/privacy';
   if (hash === '/status') return '/status';
   return '/';
+}
+
+function routeSlug(route, prefix) {
+  return decodeURIComponent(route.slice(prefix.length).split(/[?#]/)[0] || '');
 }
 
 function navigate(route) {
@@ -53,6 +67,8 @@ function Privacy() {
           <li>Real client data is disabled by default.</li>
           <li>Voice recordings are processed and not retained beyond the transcription pipeline.</li>
           <li>Secrets never leave the server environment.</li>
+          <li>Public project pages distinguish active assignments, pilots, labs, private work, and measured case studies.</li>
+          <li>Hosted payment providers collect payment details; Fanni does not request card numbers in chat.</li>
         </ul>
         <h2>Contact</h2>
         <p>For privacy inquiries, contact your Kupuri Media workspace administrator.</p>
@@ -136,6 +152,13 @@ function FocusSection({ type, onNavigate }) {
 
 function Router({ route, setRoute }) {
   const nav = (nextRoute) => setRoute(nextRoute);
+
+  if (route.startsWith('/programs/')) return <ProgramPage slug={routeSlug(route, '/programs/')} onNavigate={nav} />;
+  if (route.startsWith('/work/')) return <ProjectPage slug={routeSlug(route, '/work/')} onNavigate={nav} />;
+  if (route.startsWith('/signals/')) return <SignalPage slug={routeSlug(route, '/signals/')} onNavigate={nav} />;
+  if (route === '/checkout/success') return <Checkout slug="problem-scan" status="success" onNavigate={nav} />;
+  if (route === '/checkout/cancelled') return <Checkout slug="problem-scan" status="cancelled" onNavigate={nav} />;
+  if (route.startsWith('/checkout/')) return <Checkout slug={routeSlug(route, '/checkout/')} onNavigate={nav} />;
 
   switch (route) {
     case '/auth': return <Auth onNavigate={nav} onAuthenticated={() => setRoute('/app')} />;
