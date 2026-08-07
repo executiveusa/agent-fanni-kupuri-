@@ -18,6 +18,7 @@ const files = {
   billingServer: 'server/integrations/billing.js',
   billingRoutes: 'server/routes/billing.js',
   migration: 'supabase/migrations/20260807010000_fanni_public_site_and_billing.sql',
+  privatePolicyMigration: 'supabase/migrations/20260807013000_fanni_private_table_deny_policies.sql',
   skill: 'customware/ext/skills/fanni-site-gauntlet/SKILL.md'
 };
 
@@ -88,10 +89,12 @@ check(6, 'No card data collection in Fanni UI', !/<input[^>]+(card|cc-|credit|nu
 check(6, 'Products are allowlisted', /BILLING_PRODUCTS/.test(source.billingServer) && /Unsupported product/.test(source.billingServer));
 check(6, 'Redirect does not grant entitlement', !/upsertEntitlement/.test(source.checkout) && /signed provider webhook/.test(source.checkout));
 check(6, 'Webhooks drive entitlement changes', /processBillingWebhook/.test(source.billingServer) && /upsertEntitlement/.test(source.billingServer));
+check(6, 'Entitlements require a matching Fanni checkout ledger record', /getCheckoutRequest/.test(source.billingServer) && /checkout_request_not_found/.test(source.billingServer) && /product_mismatch/.test(source.billingServer) && /provider_mismatch/.test(source.billingServer));
 
 // Loop 7 — Privacy and security
 check(7, 'Public reads require publication status', /publication_status = 'published'/.test(source.migration));
 check(7, 'Billing tables are not readable anonymously', /revoke all on fanni\.billing_entitlements from anon, authenticated/.test(source.migration) && !/create policy public_read[^;]+billing_entitlements/s.test(source.migration));
+check(7, 'Private commercial tables have explicit browser-deny policies', ['lead_diagnostics', 'billing_checkout_requests', 'billing_events', 'billing_entitlements'].every(table => source.privatePolicyMigration.includes(`deny_browser_${table}`)) && /using \(false\)/.test(source.privatePolicyMigration));
 check(7, 'Public evidence requires verification', /published_evidence_requires_verification/.test(source.migration));
 check(7, 'Return URLs are allowlisted', /FANNI_BILLING_ALLOWED_ORIGINS/.test(source.billingServer) && /INVALID_RETURN_URL/.test(source.billingServer));
 check(7, 'Webhook signatures use timing-safe comparison', /timingSafeEqual/.test(source.billingServer));
