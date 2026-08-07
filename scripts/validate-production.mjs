@@ -19,11 +19,26 @@ const requiredFiles = [
   'production/memory-policy.yaml',
   'production/personas/fanni.yaml',
   'customware/ext/skills/fanni-pulso/SKILL.md',
+  'customware/ext/skills/fanni-site-gauntlet/SKILL.md',
   'docs/FANNI_PULSO_LATAM_SIGNAL_OS.md',
   'docs/WORLDMONITOR_INTEGRATION_BOUNDARY.md',
   'src/integrations/zernioClient.js',
   'src/runtime/socialMediaWorkflow.js',
   'src/runtime/fanniPulsoDemo.js',
+  'src/content/publicSite.js',
+  'src/components/FanniCharacter.jsx',
+  'src/components/FanniDesk.jsx',
+  'src/pages/Landing.jsx',
+  'src/pages/ProgramPage.jsx',
+  'src/pages/ProjectPage.jsx',
+  'src/pages/SignalPage.jsx',
+  'src/pages/Checkout.jsx',
+  'src/public-site.css',
+  'src/public-accessibility.css',
+  'server/integrations/billing.js',
+  'server/routes/billing.js',
+  'scripts/site-gauntlet.mjs',
+  'supabase/migrations/20260807010000_fanni_public_site_and_billing.sql',
   'supabase/functions/fanni-zernio-webhook/index.ts'
 ];
 
@@ -86,5 +101,25 @@ const memory = YAML.parse(await fs.readFile(path.join(root, 'production/memory-p
 if (!memory.memory_policy?.deny_cross_workspace_reads || !memory.memory_policy?.deny_cross_workspace_writes) {
   throw new Error('cross-workspace memory must be denied');
 }
+
+const publicContent = await fs.readFile(path.join(root, 'src/content/publicSite.js'), 'utf8');
+for (const requiredProgram of ['Fanni Demand', 'Fanni Reputation', 'Fanni Operations']) {
+  if (!publicContent.includes(requiredProgram)) throw new Error(`public site missing program ${requiredProgram}`);
+}
+for (const requiredOffer of ['problem_scan', 'demand_operator', 'business_operator', 'enterprise_consultation']) {
+  if (!publicContent.includes(requiredOffer)) throw new Error(`public site missing offer ${requiredOffer}`);
+}
+if (/Banorte/i.test(publicContent)) throw new Error('public content must not imply an unapproved Banorte client relationship');
+
+const billing = await fs.readFile(path.join(root, 'server/integrations/billing.js'), 'utf8');
+if (!billing.includes('FANNI_BILLING_ALLOWED_ORIGINS')) throw new Error('billing return URL allowlist missing');
+if (!billing.includes('timingSafeEqual')) throw new Error('billing webhook comparison must be timing-safe');
+if (!billing.includes('verifyStripeWebhook') || !billing.includes('verifyCreemWebhook')) throw new Error('signed provider webhook verification missing');
+if (!billing.includes('upsertEntitlement')) throw new Error('provider-neutral entitlement ledger missing');
+
+const publicationMigration = await fs.readFile(path.join(root, 'supabase/migrations/20260807010000_fanni_public_site_and_billing.sql'), 'utf8');
+if (!publicationMigration.includes('published_case_study_requires_permission')) throw new Error('case-study permission constraint missing');
+if (!publicationMigration.includes('published_evidence_requires_verification')) throw new Error('public evidence verification constraint missing');
+if (!publicationMigration.includes('revoke all on fanni.billing_entitlements from anon, authenticated')) throw new Error('billing entitlements must not be anonymously readable');
 
 console.log('Production configuration validated.');
