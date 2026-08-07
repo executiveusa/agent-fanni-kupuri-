@@ -15,6 +15,7 @@ import { healthRouter } from './routes/health.js';
 import { voiceRouter } from './routes/voice.js';
 import { workflowRouter } from './routes/workflow.js';
 import { chatRouter } from './routes/chat.js';
+import { billingRouter } from './routes/billing.js';
 
 const PORT = parseInt(process.env.PORT || '3001', 10);
 const startedAt = new Date().toISOString();
@@ -92,7 +93,7 @@ function buildAdapters() {
 
   const llmPriority = ['deepseek', 'groq', 'openai', 'cohere', 'anthropic', 'openrouter', 'qvac'];
   const availableLlmProviders = llmPriority.filter(p => Boolean(llmAdapters[p]));
-  
+
   const llmRoute = {
     primary: availableLlmProviders[0] ? { provider: availableLlmProviders[0] } : null,
     fallbacks: availableLlmProviders.slice(1).map(p => ({ provider: p })),
@@ -115,7 +116,7 @@ class Router {
   post(path, ...handlers) { this._routes.push({ method: 'POST', path, handlers }); }
 
   handle(req, res) {
-    const url = new URL(req.url, `http://localhost`);
+    const url = new URL(req.url, 'http://localhost');
 
     const eRes = /** @type {any} */ (res);
     eRes._pendingStatus = 200;
@@ -151,20 +152,20 @@ class Router {
 }
 
 // ── Build request body parser ────────────────────────────────────────────
-/** @param {import('http').IncomingMessage & { body?: any }} req */
+/** @param {import('http').IncomingMessage & { body?: any, rawBody?: string }} req */
 function withBody(req) {
   return new Promise(/** @type {(resolve: (v?: any) => void, reject: (e: any) => void) => void} */ ((resolve, reject) => {
     const chunks = /** @type {Buffer[]} */ ([]);
     req.on('data', c => chunks.push(c));
     req.on('end', () => {
+      const raw = Buffer.concat(chunks).toString('utf8');
+      req.rawBody = raw;
       try {
-        const raw = Buffer.concat(chunks).toString('utf8');
         req.body = raw ? JSON.parse(raw) : {};
-        resolve();
       } catch {
         req.body = {};
-        resolve();
       }
+      resolve();
     });
     req.on('error', reject);
   }));
@@ -177,11 +178,12 @@ healthRouter(router, { startedAt, version });
 voiceRouter(router, { requireAuth, resolveWorkspace, sttAdapters, ttsAdapters, sttRoute, ttsRoute });
 workflowRouter(router, { requireAuth, resolveWorkspace });
 chatRouter(router, { requireAuth, resolveWorkspace, llmAdapters, llmRoute });
+billingRouter(router);
 
 const server = createServer(async (req, res) => {
-  const extReq = /** @type {import('http').IncomingMessage & { body?: any }} */ (req);
+  const extReq = /** @type {import('http').IncomingMessage & { body?: any, rawBody?: string }} */ (req);
   res.setHeader('Access-Control-Allow-Origin', process.env.FANNI_CORS_ORIGIN || '*');
-  res.setHeader('Access-Control-Allow-Headers', 'Authorization, Content-Type, X-Fanni-Workspace, X-Fanni-Language');
+  res.setHeader('Access-Control-Allow-Headers', 'Authorization, Content-Type, X-Fanni-Workspace, X-Fanni-Language, Stripe-Signature, Creem-Signature');
   res.setHeader('Access-Control-Allow-Methods', 'GET, POST, OPTIONS');
   res.setHeader('Content-Type', 'application/json');
 
@@ -191,7 +193,7 @@ const server = createServer(async (req, res) => {
   const isJsonBody = req.method === 'POST' && contentType.includes('application/json');
 
   if (isJsonBody) await withBody(extReq);
-  else extReq.body = {};
+  else { extReq.body = {}; extReq.rawBody = ''; }
 
   router.handle(extReq, res);
 });
@@ -201,6 +203,7 @@ server.listen(PORT, () => {
   console.log(`[fanni-server] Supabase: ${process.env.SUPABASE_URL ? 'configured' : 'NOT configured'}`);
   console.log(`[fanni-server] Primary LLM: ${llmRoute.primary?.provider || 'none'}`);
   console.log(`[fanni-server] External writes: ${process.env.FANNI_ALLOW_EXTERNAL_WRITES === 'true' ? 'ENABLED' : 'blocked'}`);
+  console.log(`[fanni-server] Billing: ${process.env.STRIPE_SECRET_KEY || process.env.CREEM_API_KEY ? 'provider configured' : 'not configured'}`);
 });
 
 process.on('SIGTERM', () => { server.close(); process.exit(0); });
