@@ -57,6 +57,14 @@ function assertSafeReturnUrl(value, allowedOrigins) {
   return url.toString();
 }
 
+function normalizeRequestId(value) {
+  if (typeof value !== 'string') return null;
+  const candidate = value.trim();
+  return /^[0-9a-f]{8}-[0-9a-f]{4}-[1-5][0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$/i.test(candidate)
+    ? candidate
+    : null;
+}
+
 export function resolveReturnUrls({ successUrl, cancelUrl, env = process.env }) {
   const configuredOrigin = env.FANNI_PUBLIC_SITE_ORIGIN || 'http://localhost:5173';
   const allowedOrigins = (env.FANNI_BILLING_ALLOWED_ORIGINS || configuredOrigin)
@@ -79,6 +87,24 @@ export function createBillingStore(env = process.env) {
   return {
     async recordCheckoutRequest(record) {
       const { error } = await client.schema('fanni').from('billing_checkout_requests').upsert(record, { onConflict: 'request_id' });
+      if (error) throw error;
+    },
+    async getCheckoutRequest(requestId) {
+      const { data, error } = await client
+        .schema('fanni')
+        .from('billing_checkout_requests')
+        .select('request_id,provider,provider_checkout_id,product_key,mode,status,customer_ref')
+        .eq('request_id', requestId)
+        .maybeSingle();
+      if (error) throw error;
+      return data || null;
+    },
+    async updateCheckoutRequest(requestId, patch) {
+      const { error } = await client
+        .schema('fanni')
+        .from('billing_checkout_requests')
+        .update({ ...patch, updated_at: new Date().toISOString() })
+        .eq('request_id', requestId);
       if (error) throw error;
     },
     async recordEvent(record) {
@@ -255,7 +281,7 @@ function normalizeStripeEvent(event) {
     eventId: event.id,
     eventType: event.type,
     productKey: metadata.product_key || null,
-    requestId: metadata.fanni_request_id || object.client_reference_id || null,
+    requestId: normalizeRequestId(metadata.fanni_request_id || object.client_reference_id),
     customerRef: object.customer || object.customer_email || getNested(object, 'customer_details.email') || null,
     subscriptionRef: object.subscription || (event.type.startsWith('customer.subscription.') ? object.id : null),
     entitlementStatus,
@@ -275,7 +301,7 @@ function normalizeCreemEvent(event) {
     eventId: event.id,
     eventType,
     productKey: metadata.product_key || null,
-    requestId: metadata.fanni_request_id || object.request_id || event.request_id || null,
+    requestId: normalizeRequestId(metadata.fanni_request_id || object.request_id || event.request_id),
     customerRef: object.customer?.id || object.customer?.email || object.customer || null,
     subscriptionRef: object.subscription?.id || object.subscription || null,
     entitlementStatus,
@@ -283,11 +309,30 @@ function normalizeCreemEvent(event) {
   };
 }
 
+async function resolveLedgerMatch({ normalized, provider, store }) {
+  if (!normalized.entitlementStatus) return { checkout: null, reason: null };
+  if (!normalized.requestId) return { checkout: null, reason: 'missing_fanni_request_id' };
+  if (!normalized.productKey || !BILLING_PRODUCTS[normalized.productKey]) return { checkout: null, reason: 'unsupported_product_metadata' };
+
+  const checkout = await store.getCheckoutRequest(normalized.requestId);
+  if (!checkout) return { checkout: null, reason: 'checkout_request_not_found' };
+  if (checkout.provider !== provider) return { checkout: null, reason: 'provider_mismatch' };
+  if (checkout.product_key !== normalized.productKey) return { checkout: null, reason: 'product_mismatch' };
+  if (checkout.mode !== BILLING_PRODUCTS[checkout.product_key].mode) return { checkout: null, reason: 'billing_mode_mismatch' };
+  return { checkout, reason: null };
+}
+
 export async function processBillingWebhook({ provider, rawBody, signature, env = process.env, store = createBillingStore(env), now = Date.now() }) {
   if (!store) {
     const error = new Error('Billing ledger is not configured');
     error.code = 'BILLING_LEDGER_NOT_CONFIGURED';
     error.status = 503;
+    throw error;
+  }
+  if (!['stripe', 'creem'].includes(provider)) {
+    const error = new Error('Unsupported billing provider');
+    error.code = 'UNSUPPORTED_PROVIDER';
+    error.status = 400;
     throw error;
   }
 
@@ -317,30 +362,51 @@ export async function processBillingWebhook({ provider, rawBody, signature, env 
     throw error;
   }
 
+  const ledgerMatch = await resolveLedgerMatch({ normalized, provider, store });
+  const canApplyEntitlement = Boolean(
+    normalized.entitlementStatus
+      && normalized.customerRef
+      && ledgerMatch.checkout
+      && !ledgerMatch.reason
+  );
+  const processingStatus = normalized.entitlementStatus && !canApplyEntitlement ? 'ignored' : 'processed';
+  const persistedRequestId = ledgerMatch.checkout?.request_id || null;
+  const persistedProductKey = ledgerMatch.checkout?.product_key || normalized.productKey || null;
+
   await store.recordEvent({
     provider,
     event_id: normalized.eventId,
     event_type: normalized.eventType,
-    request_id: normalized.requestId,
-    product_key: normalized.productKey,
+    request_id: persistedRequestId,
+    product_key: persistedProductKey,
     customer_ref: normalized.customerRef,
     signature_valid: true,
-    processing_status: 'processed',
-    payload_redacted: normalized.payload,
+    processing_status: processingStatus,
+    payload_redacted: {
+      ...normalized.payload,
+      entitlement_gate: {
+        applied: canApplyEntitlement,
+        ignored_reason: ledgerMatch.reason || (normalized.entitlementStatus && !normalized.customerRef ? 'missing_customer_reference' : null)
+      }
+    },
     received_at: new Date(now).toISOString(),
     processed_at: new Date(now).toISOString()
   });
 
-  if (normalized.entitlementStatus && normalized.productKey && normalized.customerRef) {
+  if (canApplyEntitlement) {
     await store.upsertEntitlement({
       provider,
       customer_ref: normalized.customerRef,
-      product_key: normalized.productKey,
+      product_key: ledgerMatch.checkout.product_key,
       provider_subscription_id: normalized.subscriptionRef,
       status: normalized.entitlementStatus,
       source_event_id: normalized.eventId,
-      metadata_redacted: { request_id: normalized.requestId },
+      metadata_redacted: { request_id: ledgerMatch.checkout.request_id },
       updated_at: new Date(now).toISOString()
+    });
+    await store.updateCheckoutRequest(ledgerMatch.checkout.request_id, {
+      status: normalized.entitlementStatus === 'active' ? 'completed' : ledgerMatch.checkout.status,
+      customer_ref: normalized.customerRef
     });
   }
 
@@ -349,6 +415,10 @@ export async function processBillingWebhook({ provider, rawBody, signature, env 
     provider,
     eventId: normalized.eventId,
     eventType: normalized.eventType,
-    entitlementStatus: normalized.entitlementStatus
+    processingStatus,
+    entitlementStatus: canApplyEntitlement ? normalized.entitlementStatus : null,
+    ignoredReason: processingStatus === 'ignored'
+      ? ledgerMatch.reason || (!normalized.customerRef ? 'missing_customer_reference' : 'entitlement_gate_failed')
+      : null
   };
 }
