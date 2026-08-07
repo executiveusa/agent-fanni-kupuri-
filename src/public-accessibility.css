@@ -1,0 +1,7 @@
+/* Final accessibility cascade for the public editorial site.
+   Keep metadata at 12px minimum, including compact mobile surfaces. */
+.public-project__evidence span,
+.public-signal__offer small,
+.fanni-desk__trigger-label {
+  font-size: 12px;
+}
