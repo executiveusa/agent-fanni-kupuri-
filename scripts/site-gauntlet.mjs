@@ -2,7 +2,6 @@ import fs from 'node:fs/promises';
 import path from 'node:path';
 
 const root = process.cwd();
-
 const files = {
   landing: 'src/pages/Landing.jsx',
   program: 'src/pages/ProgramPage.jsx',
@@ -31,7 +30,6 @@ const results = [];
 function check(loop, name, condition, detail) {
   results.push({ loop, name, pass: Boolean(condition), detail });
 }
-
 function count(text, pattern) {
   return [...text.matchAll(pattern)].length;
 }
@@ -40,7 +38,8 @@ const publicJsx = [source.landing, source.program, source.project, source.signal
 const allPublicSource = `${publicJsx}\n${source.content}\n${source.css}\n${source.accessibilityCss}`;
 
 // Loop 1 — Content truth
-check(1, 'Project taxonomy is explicit', /case-study/.test(source.content) && /active-assignment/.test(source.migration) && /pilot/.test(source.content) && /lab/.test(source.content) && /internal/.test(source.content) && /private/.test(source.migration));
+const governedProjectTypes = ['case-study', 'active-assignment', 'pilot', 'lab', 'internal', 'private'];
+check(1, 'Project taxonomy is explicit', governedProjectTypes.every(type => source.migration.includes(`'${type}'`)));
 check(1, 'Labs are disclosed as labs', /Public proof lab/.test(source.content) && /proof demo/.test(source.content));
 check(1, 'Missing credentials and live sources are disclosed', /credentials remain the next implementation boundary/.test(source.content) && /not yet configured/.test(source.content));
 check(1, 'Research coverage limits are visible', /qualitative market signal, not a market-size claim/i.test(source.signal) && /no claim of platform-wide prevalence/i.test(source.signal));
@@ -77,12 +76,7 @@ check(5, 'Selected problem is carried into Space Agent', /fanni_public_intent/.t
 check(5, 'Semantic landmarks exist', /<header/.test(source.landing) && /<main/.test(source.landing) && /<footer/.test(source.landing) && /<nav/.test(source.landing));
 check(5, 'Fanni Desk is keyboard discoverable', /onFocusCapture/.test(source.desk) && /onBlurCapture/.test(source.desk));
 const smallPx = [...source.css.matchAll(/font-size:\s*(\d+)px/g)].map(match => Number(match[1])).filter(value => value < 12);
-const accessibilityOverrides = [
-  '.public-project__evidence span',
-  '.public-signal__offer small',
-  '.fanni-desk__trigger-label',
-  'font-size: 12px'
-].every(value => source.accessibilityCss.includes(value));
+const accessibilityOverrides = ['.public-project__evidence span', '.public-signal__offer small', '.fanni-desk__trigger-label', 'font-size: 12px'].every(value => source.accessibilityCss.includes(value));
 check(5, 'Public metadata is at least 12px after final cascade', smallPx.length === 0 || accessibilityOverrides, `base declarations below 12px: ${smallPx.join(', ') || 'none'}`);
 check(5, 'Mobile breakpoints include phone and tablet behavior', /@media \(max-width: 780px\)/.test(source.css) && /@media \(max-width: 1120px\)/.test(source.css));
 
