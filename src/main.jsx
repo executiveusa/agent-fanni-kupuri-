@@ -6,6 +6,7 @@ import './connections.css';
 import './focus-home.css';
 import './focus-section.css';
 import './public-site.css';
+import './public-accessibility.css';
 import { LanguageContext, useLanguageProvider, useLanguage } from './hooks/useLanguage.js';
 import { AuthContext, useAuthProvider } from './hooks/useAuth.js';
 
